@@ -45,7 +45,7 @@ Entregar:
 - 18 READMEs de módulos em `src/modules/*/README.md`:
   `addresses`, `assistant_ai`, `auth`, `comments`, `complaints`, `gcp`, `pag-seguro`, `payments`, `plans`, `posts`, `prisma`, `reporting`, `roles`, `sms`, `subscriptions`, `subscription-status`, `upload-medias`, `users`.
   - Obs.: `common/` receberá um README pequeno descrevendo utilitários compartilhados.
-  - Obs.: `n8n-agent/` contém apenas um JSON de workflow — será documentado brevemente dentro do README do `assistant_ai` (por pertinência temática) ou em um README próprio mínimo, a decidir no plano.
+  - Obs.: `n8n-agent/` contém apenas um arquivo JSON de workflow (`Assistente de analise de postagens.json`). Será documentado como subseção dentro do README do `assistant_ai` (pertinência temática), sem README próprio. Motivo: não há código TypeScript para documentar as 11 seções do template.
 - 2 READMEs de raiz: `src/aws/README.md` e `src/llm-service/README.md`.
 
 ### 4.2 Fora de escopo
