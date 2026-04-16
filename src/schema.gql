@@ -1,0 +1,655 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type Address {
+  id: String!
+  street: String!
+  number: Float!
+  complement: String
+  district: String!
+  city: String!
+  state: String!
+  cep: String!
+  latitude: Float
+  longitude: Float
+}
+
+type Complaint {
+  id: String!
+  reason: String!
+  description: String
+  status: String!
+  analysesComplaints: String
+
+  """Defines who made the appraisal: assistant or human"""
+  appraiser: AppraiserEnum
+  postId: String
+  commentId: String
+  reporterId: String!
+  reportedUserId: String!
+  post: Post
+  comment: Comment
+  created_at: DateTime!
+  updated_at: DateTime
+}
+
+enum AppraiserEnum {
+  ASSISTANT
+  HUMAN
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type Comment {
+  id: String!
+  content: String!
+  postId: String!
+  post: Post!
+  parentId: String
+  parent: Comment
+  replies: [Comment!]
+  commentsCount: Int!
+  authorId: String!
+  author: UserEntity!
+  created_at: DateTime!
+  updated_at: DateTime
+  deleted_at: DateTime
+  complaints: [Complaint!]!
+}
+
+type Post {
+  id: String!
+  content: String!
+  imageUrl: [String!]
+  videoUrl: String
+  comments: [Comment!]
+  commentsCount: Int!
+  authorId: String!
+  author: UserEntity!
+  deletedStatus: Boolean!
+  deleted_at: DateTime
+  created_at: DateTime!
+  updated_at: DateTime
+  reportedPublication: Boolean!
+  complaints: [Complaint!]!
+}
+
+type RoleEntity {
+  id: Int!
+  name: String!
+}
+
+type UserEntity {
+  id: String!
+  fullName: String!
+  nickName: String!
+  email: String!
+  password: String!
+  smartphone: String!
+  resetPasswordToken: String
+  birthdate: DateTime!
+  cpf: String!
+  deleted_at: DateTime
+  created_at: DateTime!
+  update_at: DateTime
+  status: String!
+  verificationCode: Float!
+  isOnline: Boolean!
+  lastLogin: DateTime
+  address: Address
+  role: RoleEntity!
+  roleId: Int!
+  posts: [Post!]
+  comments: [Comment!]
+}
+
+type AddressDTO {
+  id: String!
+  street: String!
+  number: Float!
+  complement: String
+  district: String!
+  city: String!
+  state: String!
+  cep: String!
+  latitude: Float
+  longitude: Float
+}
+
+type RoleDTO {
+  id: Int!
+  name: String!
+}
+
+type UserDTO {
+  id: ID!
+  fullName: String!
+  nickName: String!
+  email: String!
+  password: String!
+  smartphone: String!
+  resetPasswordToken: String
+  birthdate: DateTime!
+  cpf: String!
+  deleted_at: DateTime
+  created_at: DateTime!
+  update_at: DateTime
+  status: String!
+  verificationCode: Int!
+  isOnline: Boolean
+  lastLogin: DateTime
+  address: AddressDTO
+  role: RoleDTO!
+  roleId: Int!
+}
+
+type UsersWithPagination {
+  users: [UserWithAgeDTO!]!
+  total: Int!
+  totalPages: Int!
+  page: Int!
+  limit: Int!
+  preferences: [String!]
+  distanceKm: Float
+  latitude: Float
+  longitude: Float
+}
+
+type UserWithAgeDTO {
+  id: ID!
+  fullName: String!
+  nickName: String!
+  email: String!
+  password: String!
+  smartphone: String!
+  resetPasswordToken: String
+  birthdate: DateTime!
+  cpf: String!
+  deleted_at: DateTime
+  created_at: DateTime!
+  update_at: DateTime
+  status: String!
+  verificationCode: Int!
+  isOnline: Boolean
+  lastLogin: DateTime
+  address: AddressDTO
+  role: RoleDTO!
+  roleId: Int!
+  age: Int!
+}
+
+type AuthResponse {
+  access_token: String!
+  refreshToken: String!
+  user: UserDTO!
+}
+
+type Plan {
+  id: String!
+  name: String!
+  description: String!
+  price: Int!
+  isActive: Boolean!
+  currency: String!
+  deleted_at: DateTime
+  created_at: DateTime!
+  update_at: DateTime
+}
+
+type PlanDTO {
+  id: String!
+  name: String!
+  description: String!
+  price: Int!
+  currency: String!
+  deletedAt: DateTime
+  createdAt: DateTime!
+  updatedAt: DateTime
+}
+
+type SubscriptionStatus {
+  id: Int!
+  slug: String!
+  description: String!
+  deleted_at: DateTime
+  created_at: DateTime!
+  update_at: DateTime
+}
+
+type Subscription {
+  id: String!
+  start_date: DateTime!
+  end_date: DateTime!
+  user: UserDTO!
+  userId: String!
+  plan: Plan!
+  planId: String!
+
+  """macroestado da assinatura (active, canceled, trialing, expired)"""
+  status: SubscriptionStatus!
+  statusId: Int!
+
+  """flag de disponibilidade operacional (true/false)"""
+  isActive: Boolean!
+  autoRenew: Boolean!
+  interval: IntervalEnum!
+  amount: Int
+  discount: Int
+  trial_end: DateTime
+  deleted_at: DateTime
+  created_at: DateTime!
+  update_at: DateTime
+}
+
+enum IntervalEnum {
+  MONTH
+  YEAR
+}
+
+type SubscriptionStatusDTO {
+  id: Int!
+  slug: String!
+  description: String!
+  deleted_at: DateTime
+  created_at: DateTime!
+  update_at: DateTime
+}
+
+type Query {
+  posts: [Post!]!
+  post(id: String!): Post!
+  findAllSubscriptionStatus: [SubscriptionStatusDTO!]!
+  findSubscriptionStatusByName(slug: SubscriptionStatusEnum!): SubscriptionStatus!
+  plans: [PlanDTO!]!
+  findByName(namePlan: CreatePlanNameInput!): PlanDTO!
+  consultOrderById(id: String!): JSON!
+  me: UserDTO!
+  getUsers: [UserWithAgeDTO!]!
+
+  """
+  Retorna uma lista paginada de usuários com opção de filtro por termo de busca.
+  """
+  getUsersByPaginationForSearchFullNameOrNickName(pagination: PaginationInput, search: String): UsersWithPagination!
+  getUserById(userId: String!): UserWithAgeDTO!
+}
+
+enum SubscriptionStatusEnum {
+  ACTIVE
+  PASTDUE
+  CANCELED
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+}
+
+input CreatePlanNameInput {
+  name: PlanSlugEnum!
+}
+
+enum PlanSlugEnum {
+  FREE
+  PRO
+  ULTIMATE
+}
+
+"""
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSON
+
+input PaginationInput {
+  page: Int = 1
+  limit: Int = 10
+}
+
+type Mutation {
+  createComplaint(createComplaintInput: CreateComplaintInput!, userId: String): String!
+  createPost(createPostInput: CreatePostInput!): Post!
+  createSubscriptionStatus(createSubscriptionStatusInput: CreateSubscriptionStatusInput!): SubscriptionStatusDTO!
+  updateSubscriptionStatus(id: Float!, updateSubscriptionStatusInput: UpdateSubscriptionStatusInput!): SubscriptionStatus!
+  removeSubscriptionStatus(id: Int!): SubscriptionStatus!
+  createSubscription(createSubscriptionInput: CreateSubscriptionInput!): Subscription!
+  createPlan(createPlanInput: CreatePlanInput!): PlanDTO!
+  updatePlan(id: String!, updatePlanInput: UpdatePlanInput!): PlanDTO!
+  removePlan(id: String!): Plan!
+
+  """cria e paga um pedido"""
+  createAndPaymentOrder(create: CreateOrderInput!): JSON!
+  payOrderById(id: String!): JSON!
+  login(loginInput: LoginInput!): AuthResponse!
+  logoutUser: Boolean!
+
+  """Cria um user"""
+  CreateUser(createUserInput: CreateUserInput!): UserEntity!
+  updateUser(userId: String, updateDataUser: UpdateUserInput!): UserEntity!
+  verificationCode(code: Float!, userId: String): UserWithAgeDTO!
+  deletedUser(userId: String!): UserEntity!
+  softDeleted(userId: String!): UserEntity!
+  updateAddressForUser(userId: String!, updateAddressInput: UpdateAddressInput!): Address!
+}
+
+input CreateComplaintInput {
+  reason: String!
+  description: String
+  postId: String
+  commentId: String
+}
+
+input CreatePostInput {
+  content: String!
+  imageUrl: [String!]
+  videoUrl: String
+}
+
+input CreateSubscriptionStatusInput {
+  slug: String!
+  description: String!
+}
+
+input UpdateSubscriptionStatusInput {
+  slug: String
+  description: String
+}
+
+input CreateSubscriptionInput {
+  startDate: DateTime
+  endDate: DateTime
+  userId: String!
+  planId: String!
+  statusId: Int!
+  isActive: Boolean
+  autoRenew: Boolean!
+  discount: Int
+  interval: IntervalEnum!
+  amount: Int
+  trialEnd: DateTime
+}
+
+input CreatePlanInput {
+  name: String!
+  description: String!
+  price: Int!
+  currency: String!
+}
+
+input UpdatePlanInput {
+  name: String
+  description: String
+  price: Int
+  currency: String
+}
+
+input CreateOrderInput {
+  boleto: CreateOrderBoletoInput
+  cardCredit: CreateAndPaymentOrderWithCardInput
+  pix: CreateOrderQRCodePixInput
+}
+
+input CreateOrderBoletoInput {
+  reference_id: String!
+  customer: CustomerInput!
+  items: [ItemsWithReferenceId!]!
+  charges: [ChargesBoleto!]!
+  shipping: ShippingInput!
+}
+
+input CustomerInput {
+  name: String!
+  email: String!
+
+  """CPF/CNPJ"""
+  tax_id: String!
+  phones: [PhoneInput!]!
+}
+
+input PhoneInput {
+  """Código de operadora do País (DDI)"""
+  country: String!
+
+  """Código de operadora local (DDD)"""
+  area: String!
+  number: String!
+  type: TypePhoneEnum!
+}
+
+enum TypePhoneEnum {
+  MOBILE
+  BUSINESS
+  HOME
+}
+
+input ItemsWithReferenceId {
+  name: String!
+  quantity: Float!
+  unit_amount: Float!
+  reference_id: String!
+}
+
+input ChargesBoleto {
+  reference_id: String!
+  description: String!
+  amount: AmountWithCurrencyInput!
+  payment_method: PaymentMethodBoleto!
+}
+
+input AmountWithCurrencyInput {
+  value: Int!
+  currency: String!
+}
+
+input PaymentMethodBoleto {
+  type: TypePaymentMethodEnum!
+  boleto: BoletoInput!
+}
+
+enum TypePaymentMethodEnum {
+  CREDIT_CARD
+  DEBIT_CARD
+  BOLETO
+}
+
+input BoletoInput {
+  """exemplo: 2023-06-20"""
+  due_date: String!
+  instruction_lines: InstructionLinesInput!
+  holder: HolderBoletoInput!
+}
+
+input InstructionLinesInput {
+  line_1: String!
+  line_2: String!
+}
+
+input HolderBoletoInput {
+  """Nome do proprietario do cartão"""
+  name: String!
+
+  """cpf do proprietario"""
+  tax_id: String!
+
+  """email do proprietario"""
+  email: String!
+  address: AddressHolder!
+}
+
+input AddressHolder {
+  """Exemplo: Avenida Brigadeiro Faria Lima"""
+  street: String!
+
+  """Exemplo: 1384"""
+  number: String!
+
+  """Exemplo: Pinheiros"""
+  locality: String!
+
+  """Exemplo: São Paulo"""
+  city: String!
+
+  """Exemplo: SP"""
+  region_code: String!
+
+  """
+  Exemplo: shipping "BRA" em holder "Brasil"
+  """
+  country: String!
+
+  """Exemplo: 01452002"""
+  postal_code: String!
+
+  """Exemplo: São Paulo"""
+  region: String!
+}
+
+input ShippingInput {
+  address: AddressShipping!
+}
+
+input AddressShipping {
+  """Exemplo: Avenida Brigadeiro Faria Lima"""
+  street: String!
+
+  """Exemplo: 1384"""
+  number: String!
+
+  """Exemplo: Pinheiros"""
+  locality: String!
+
+  """Exemplo: São Paulo"""
+  city: String!
+
+  """Exemplo: SP"""
+  region_code: String!
+
+  """
+  Exemplo: shipping "BRA" em holder "Brasil"
+  """
+  country: String!
+
+  """Exemplo: 01452002"""
+  postal_code: String!
+
+  """Exemplo: apto 12"""
+  complement: String!
+}
+
+input CreateAndPaymentOrderWithCardInput {
+  reference_id: String!
+  customer: CustomerInput!
+  items: [ItemsWithReferenceId!]!
+  shipping: ShippingInput!
+  charges: [ChargesInput!]!
+}
+
+input ChargesInput {
+  reference_id: String!
+
+  """texto curto na fatura"""
+  description: String!
+  amount: AmountWithCurrencyInput!
+  payment_method: PaymentMethodCredit!
+}
+
+input PaymentMethodCredit {
+  type: TypePaymentMethodEnum!
+  installments: Float! = 1
+  capture: Boolean!
+  card: CardInput!
+  holder: HolderInput!
+}
+
+input CardInput {
+  encrypted: String!
+  store: Boolean!
+}
+
+input HolderInput {
+  """Nome do proprietario do cartão"""
+  name: String!
+
+  """cpf do proprietario"""
+  tax_id: String!
+}
+
+input CreateOrderQRCodePixInput {
+  reference_id: String!
+  customer: CustomerInput!
+  items: [ItemsInput!]!
+  qr_codes: [QrCodes!]!
+  shipping: ShippingInput!
+}
+
+input ItemsInput {
+  name: String!
+  quantity: Float!
+  unit_amount: Float!
+}
+
+input QrCodes {
+  amount: AmountInput!
+  expiration_date: String!
+}
+
+input AmountInput {
+  value: Int!
+}
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+input CreateUserInput {
+  fullName: String!
+  nickName: String!
+  email: String!
+  password: String!
+  smartphone: String!
+  birthdate: DateTime!
+  cpf: String!
+  status: StatusUser! = PENDING
+  address: UpdateAddressInput
+  roleId: RoleEnum!
+}
+
+enum StatusUser {
+  ACTIVE
+  INACTIVE
+  DELETED
+  BLOCKED
+  PENDING
+}
+
+input UpdateAddressInput {
+  street: String
+  number: Float
+  complement: String
+  district: String
+  city: String
+  state: String
+  cep: String
+  latitude: Float
+  longitude: Float
+}
+
+enum RoleEnum {
+  SUPER_ADMIN
+  ADMIN
+  USER
+}
+
+input UpdateUserInput {
+  fullName: String
+  nickName: String
+  email: String
+  password: String
+  smartphone: String
+  birthdate: DateTime
+  cpf: String
+  status: StatusUser = PENDING
+  address: UpdateAddressInput
+  roleId: RoleEnum
+}

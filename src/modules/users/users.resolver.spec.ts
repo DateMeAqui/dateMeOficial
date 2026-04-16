@@ -1,0 +1,67 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { UsersResolver } from './users.resolver';
+import { UsersService } from './users.service';
+import { PrismaService } from '../prisma/prisma.service';
+
+describe('UsersResolver', () => {
+  let resolver: UsersResolver;
+  let usersService: UsersService;
+  let prismaMock: jest.Mocked<PrismaService> 
+
+  beforeEach(async () => {
+    prismaMock = {
+      user: {
+        create: jest.fn()
+      },
+    } as unknown as jest.Mocked<PrismaService>;
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        UsersResolver,
+        UsersService,
+        {provide: PrismaService, useValue: prismaMock},
+      ]
+    }).compile();
+
+    resolver = module.get<UsersResolver>(UsersResolver);
+    usersService = module.get<UsersService>(UsersService);
+  });
+
+  it('should be defined', () => {
+    expect(resolver).toBeDefined();
+  });
+
+  describe('CreateUser', () => {
+    it('deveria criar um user', async () => {
+      const input ={
+          name: "diovane",
+          email: "diovan3e@gmail.com",
+          password: "234",
+          birthdate: "1986-07-22",
+          cpf: "00000000000",
+          smartphone: "53991127424",
+      };
+      const fakeUser = {
+          id: '1f128a08-5c8d-4155-9109-e8a8f4f3fa45',
+          name: input.name,
+          email: input.email,
+          password: 'hashed_password',
+          birthdate: new Date(input.birthdate),
+          cpf: input.cpf,
+          smartphone: input.smartphone,
+          createdAt: new Date(),
+          verificationCode: 1234,
+          status: 'ativo',
+          isOnline: false,
+
+      };
+
+      jest.spyOn(usersService, 'create').mockResolvedValue(fakeUser);
+
+      const result = await resolver.CreateUser(input as any)
+
+      expect(usersService.create).toHaveBeenCalledWith(input)
+      expect(result).toEqual(fakeUser)
+    });
+  });
+});

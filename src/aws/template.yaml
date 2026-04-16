@@ -1,0 +1,101 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  integration-aws
+
+Parameters:
+  Environment:
+    Type: "String"
+    Default: "development"
+    AllowedValues: ["development"]
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    MemorySize: 128
+    Timeout: 600
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+        DATABASE_HOST: "parameters:///database/postgres/development/host"
+        DATABASE_USERNAME: "parameters:///database/postgres/development/username"
+        DATABASE_PASSWORD: "parameters:///database/postgres/development/password"
+        DATABASE_PORT: "parameters:///database/postgres/development/port"
+        DATABASE_NAME: "parameters:///database/postgres/development/dbname"
+    LoggingConfig:
+      LogFormat: JSON
+
+Resources:
+  DateMeApi:
+    Type: AWS::Serverless::Api
+    Properties: 
+      Name: "date-me-api"
+      StageName: 'v1'
+      EndpointConfiguration:
+        Type: REGIONAL
+      Cors:
+        AllowOrigin: "'*'"
+        AllowMethods: "'POST, GET, OPTIONS, PUT, DELETE'"
+        AllowHeaders: "'*'"
+  
+  PaymentsDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: "PaymentsDLQ.fifo"
+      FifoQueue: true
+
+  PaymentsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: "PaymentsQueue.fifo"
+      FifoQueue: true
+      ContentBasedDeduplication: true
+      VisibilityTimeout: 620
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt PaymentsDLQ.Arn
+        maxReceiveCount: 2
+
+  # Lambda que vai envar os dados pra fila
+  PaymentsEnqueue:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: "payments-enqueue"
+      Timeout: 60
+      Policies:
+        - AWSLambda_FullAccess
+        - AmazonRDSFullAccess
+        - AmazonSSMReadOnlyAccess
+        - AmazonSQSFullAccess
+      MemorySize: 128
+      Handler: integration/handlers/extractor/payments-enqueue.lambdaHandler
+      Architectures:
+        - x86_64
+      Events:
+        PostApiEvent:
+          Type: Api
+          Properties:
+            Path: /notification-payments
+            Method: post
+            RestApiId: !Ref DateMeApi
+  
+  PaymentsLoad:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: integration/handlers/loader/payments-load.lambdaHandler
+      FunctionName: "payments-load"
+      Timeout: 60
+      MemorySize: 128
+      Policies:
+        - AWSLambda_FullAccess
+        - AmazonSQSFullAccess
+        - AmazonRDSFullAccess
+        - AmazonSSMReadOnlyAccess
+        - SecretsManagerReadWrite
+      Events:
+        ClienteSQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt PaymentsQueue.Arn
+            BatchSize: 10
+            FunctionResponseTypes:
+              - ReportBatchItemFailures

@@ -1,0 +1,358 @@
+{
+  "name": "Assistente de analise de postagens",
+  "nodes": [
+    {
+      "parameters": {
+        "model": "glm-5:cloud",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        384
+      ],
+      "id": "e570404e-a64b-4df0-bb4c-9923e02e14a3",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "WF7tvYX6Zfl2ULbR",
+          "name": "Ollama account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Recebe msg da fila\n(msg reportada que viola comportamento da comunidade)\n ",
+        "height": 352,
+        "width": 352,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -864,
+        -192
+      ],
+      "id": "04043259-90de-452c-86dd-b7185c969cdc",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pega o base64 do input\nconst base64Data = $json.body.message.data;\n\n// Decodifica e transforma em objeto JSON\nconst decodedData = JSON.parse(Buffer.from(base64Data, 'base64').toString('utf8'));\n\n// Retorna os dados para o próximo nó\nreturn decodedData;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        0
+      ],
+      "id": "218ccad4-1793-41f7-b83f-56f35e1b64ed",
+      "name": "Code in JavaScript - Decodifica msg"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=Você é um moderador de conteúdo de elite, especializado em segurança de comunidades digitais. Sua missão é analisar denúncias de usuários com base nas diretrizes rigorosas da nossa plataforma.\n\n### DIRETRIZES DE JULGAMENTO:\n- LIBERDADE DE EXPRESSÃO: Permitimos críticas políticas e debates acalorados, desde que não haja incitação à violência.\n- COMPORTAMENTO: Palavrões isolados são aceitáveis, mas assédio direcionado ou bullying NÃO são tolerados.\n- SENSIBILIDADE: Discussões sobre temas sensíveis são permitidas se forem respeitosas.\n- CULTURA: O contexto cultural brasileiro (regionalismos, gírias e sarcasmo) deve ser fundamental na sua interpretação.\n\n### CATEGORIAS OBRIGATÓRIAS (Selecione uma):\n- discurso_de_odio: Racismo, homofobia, xenofobia, transfobia, capacitismo.\n- ameaca: Violência física explícita, ameaças de morte.\n- assedio: Sexual, bullying persistente, stalking.\n- desinformacao_grave: Saúde pública, processos eleitorais, emergências.\n- golpe_financeiro: Esquemas pirâmides, phishing, fraudes.\n- conteudo_sexual_explicito: Pornografia, solicitação de nudes.\n- spam: Propaganda repetitiva, links suspeitos em massa.\n- falso_positivo: Denúncia improcedente ou mal-intencionada.\n\n### CRITÉRIOS DE ANÁLISE:\n1. Analise o conteúdo literal e a intenção provável.\n2. Avalie a severidade do dano (baixa, media, alta ou critica).\n3. Determine se a denúncia é realmente procedente ou se é um falso positivo.\n\nALEGAÇÃO DO DENUNCIANTE:\n\"\"\"\n{{ $json.description }}\n\"\"\"\n\nPOST DENUNCIADO:\n\"\"\"\n{{ $json.reportedContent }}\n\n\"\"\"\n\nMOTIVO DA DENÚNCIA:\n\"\"\"\n{{ $json.reason }}\n\"\"\"\n\nDESCRIÇÃO DO USUÁRIO:\n\"\"\"\n{{ $json.reportedUserId }}\n\"\"\"\n\n### FORMATO DE SAÍDA (OBRIGATÓRIO):\nResponda APENAS com um JSON válido (sem textos explicativos fora do JSON):\n{\n  \"categoria\": \"escolha_uma_das_categorias_acima\",\n  \"severidade\": \"baixa|media|alta|critica\",\n  \"confianca\": 0-100,\n  \"justificativa\": \"explicação clara e objetiva da decisão baseada nas diretrizes\",\n  \"acao_recommended\": \"ignorar|avisar|remover|banir|investigar\"\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -64,
+        176
+      ],
+      "id": "8975c902-c373-403b-ae3a-3a3306f011f8",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "content": "### Analisa a msg reportada se contem palavras em um tom de contexto ofencivo",
+        "height": 448,
+        "width": 432
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        80
+      ],
+      "id": "44b2dd8c-85ee-46ce-8e3e-f97d3ee769c6",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "chatId": "8469566394",
+        "text": "={{ JSON.stringify($json, null, 2) }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        800,
+        -288
+      ],
+      "id": "210b15d9-d920-4d53-a506-45bef10b5367",
+      "name": "Send a text message",
+      "webhookId": "57493a13-7c4e-4f4e-86cc-e87686f200c8",
+      "credentials": {
+        "telegramApi": {
+          "id": "FffAQgZETlh4kiSK",
+          "name": "Telegram account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        496,
+        16
+      ],
+      "id": "592e9775-e45c-4a19-ac22-7a3c2b1674ed",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"categoria\": \"string\",\n  \"severidade\": \"string\",\n  \"confianca\": \"string\",\n  \"justificativa\": \"string\",\n  \"acao_recomendada\": \"string\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        96,
+        384
+      ],
+      "id": "995fbb3c-2506-4e2a-b3a1-5a79db737efd",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "1dcd872e-274d-4d9b-9dfd-50dd1830a4f0",
+        "options": {
+          "responseCode": {
+            "values": {
+              "responseCode": 403
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -784,
+        0
+      ],
+      "id": "ed96ac83-d331-486f-b576-c1c74e9b33b4",
+      "name": "Webhook - topic_reporting_reported_posts_queue",
+      "webhookId": "1dcd872e-274d-4d9b-9dfd-50dd1830a4f0"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pega o output\nlet agent = $json.output;\n\n// Se for string, converte para objeto\nif (typeof agent === 'string') {\n  agent = JSON.parse(agent);\n}\n\n// Retorna\nreturn [{\n  json: { \n    agent: agent \n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        176
+      ],
+      "id": "60b746f0-6120-4209-9047-c5edcd5fa656",
+      "name": "converte pra json se for string"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pega os dados do item anterior\nconst inputData = $input.item.json;\n\n\n// Converte para JSON string e depois para base64\nconst jsonString = JSON.stringify(inputData);\nconst base64Data = Buffer.from(jsonString).toString('base64');\n\n// Retorna no formato que o Pub/Sub espera\nreturn [\n  {\n    json: {\n      messages: [\n        {\n          data: base64Data\n        }\n      ]\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        16
+      ],
+      "id": "80c08a89-e860-498e-aef5-96de3ac95aa6",
+      "name": "Encode base64"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://pubsub.googleapis.com/v1/projects/integracaon8n-486515/topics/date-me-topic-reporting-reported-posts-resolved-queue:publish",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1088,
+        16
+      ],
+      "id": "4d61c113-eb6e-4b30-99d9-f46662535d55",
+      "name": "Publica no date-me-topic-reporting-reported-posts-resolved-queue:",
+      "credentials": {
+        "googleApi": {
+          "id": "pojVT2HLPBjnIg9a",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "### Publica no date-me-topic-reporting-reported-posts-resolved-queue:\n\nretorna os valores da denuncia mais a analise do agent",
+        "height": 384,
+        "width": 336,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        976,
+        -128
+      ],
+      "id": "d78be02a-fdab-442c-b640-d17c73e0056b",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "\n# Aplicação para Análise de Denúncias (Moderação)\nEsta aplicação automatiza o processo de moderação de conteúdo da comunidade, utilizando Inteligência Artificial para avaliar posts reportados.\n\n## Fluxo de Processamento\n###  1. Recepção (Webhook):\n  - A aplicação recebe os dados através de um Webhook configurado na Subscription (assinatura) do tópico date-me-topic-reporting-reported-posts-queue.\n\n###  2. Processamento de Dados:\n - ```Decode:``` O sistema realiza o decode da mensagem recebida (que chega em formato base64 por padrão do Pub/Sub).\n\n - ```Análise de IA:``` Os dados são enviados para um AI Agent (utilizando Ollama). Este agente aplica diretrizes e regras específicas para avaliar se o post realmente viola os termos da comunidade.\n\n###  3. Finalização e Resposta:\n - ```Consolidação:``` O resultado da análise da IA é mesclado aos dados originais da denúncia.\n\n - ```Publicação:``` Os dados finais são encodados novamente e enviados de volta à API, publicando o resultado no tópico de resolução: ***date-me-topic-reporting-reported-posts-resolved-queue***.",
+        "height": 656,
+        "width": 640,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        -944
+      ],
+      "id": "f8fc6f31-c4c0-475d-ba48-cb45c11db3a1",
+      "name": "Sticky Note3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript - Decodifica msg": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "converte pra json se for string",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Encode base64",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - topic_reporting_reported_posts_queue": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript - Decodifica msg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "converte pra json se for string": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Encode base64": {
+      "main": [
+        [
+          {
+            "node": "Publica no date-me-topic-reporting-reported-posts-resolved-queue:",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "cedbf15e-31f4-4648-881b-4938ef77ccf9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "609be957a148d33181b359e180dd964c82d4655833c6000f3d468861ad2256e4"
+  },
+  "id": "geYl9ACn5mz0RmFpbGq8t",
+  "tags": []
+}

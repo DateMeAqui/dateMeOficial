@@ -1,0 +1,219 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {          
+  id                    String    @id @default(uuid())
+  fullName              String
+  nickName              String    
+  email                 String    @unique
+  password              String
+  smartphone            String
+  birthdate             DateTime
+  cpf                   String    @unique
+  deletedAt             DateTime? @map("deleted_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime? @updatedAt @map("updated_at")
+  status                String    @default("PENDING")
+  verificationCode      Int     
+  resetPasswordToken    String?
+  isOnline              Boolean?  @default(false)
+  lastLogin             DateTime? 
+
+  //Relacionamento 1:1 obrigatório
+  address               Address?
+
+  //Relacionamento 1:1
+  roleId                Int   
+  role                  Role    @relation(fields: [roleId], references: [id])
+
+  subscriptions         Subscription[]
+  payments              Payment[]
+
+  posts                 Post[]
+  comments              Comment[]
+
+  
+  @@map("users")
+}
+
+model Address {
+  id                    String   @id @default(uuid())
+  street                String
+  number                Int
+  complement            String?
+  district              String
+  city                  String
+  state                 String
+  cep                   String
+  latitude              Float?
+  longitude             Float?
+
+  //FK para User
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)  
+
+  @@map("addresses")
+}
+
+model Role {
+  id                    Int   @id @default(autoincrement())
+  name                  String
+  users                 User[]
+
+  @@map("roles")
+}
+
+model Plan {
+  id                    String  @id @default(uuid())
+  name                  String
+  price                 Int
+  description           String
+  isActive              Boolean   @default(true)
+  currency              String    @default("BRL")
+  deletedAt             DateTime? @map("deleted_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime? @updatedAt @map("updated_at")
+
+  subscriptions         Subscription[]
+  payments              Payment[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id                    String    @id @default(uuid())
+  startDate             DateTime
+  endDate               DateTime?
+  isActive              Boolean   @default(true)
+  autoRenew             Boolean   @default(false)
+  amount                Int
+  interval              String
+  discount              Int?
+            
+  userId                String
+  planId                String
+  statusId              Int
+            
+  user                  User      @relation(fields: [userId], references: [id])
+  plan                  Plan      @relation(fields: [planId], references: [id])
+  status                SubscriptionStatus  @relation(fields: [statusId], references: [id])
+  payment               Payment[]
+            
+  trialEnd              DateTime?
+  deletedAt             DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("subscriptions")
+}
+
+model SubscriptionStatus {
+  id                    Int @id @default(autoincrement())
+  slug                  String
+  description           String
+  deletedAt             DateTime? @map("deleted_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime? @updatedAt @map("updated_at")
+
+  subscription          Subscription[]
+
+  @@map("subscription_status")
+}
+
+model Payment {
+  id                    String   @id @default(uuid())
+  amount                Int
+  currency              String
+  status                String
+  paymentDetails        Json
+  paymentMethod         String
+  orderId               String
+  chargesId             String
+
+  subscriptionId        String 
+  userId                String
+  planId                String
+
+  user                  User   @relation(fields: [userId], references: [id])
+  plan                  Plan   @relation(fields: [planId], references: [id])
+  subscription          Subscription @relation(fields: [subscriptionId], references: [id])
+
+  @@map("payments")
+}
+
+model Post {
+  id                  String    @id @default(uuid())
+  content             String
+  imageUrl            String[] @default([])// Prisma permite array de strings
+  videoUrl            String?
+  authorId            String
+  deletedStatus       Boolean   @default(false)
+  deletedAt           DateTime? @map("deleted_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime? @updatedAt @map("updated_at")
+  reportedPublication Boolean   @default(false)
+
+  // Relacionamento
+  author              User      @relation(fields: [authorId], references: [id])
+  comments            Comment[]
+  complaints          Complaint[]
+
+  @@map("posts")
+}
+
+model Comment {
+  id          String   @id @default(uuid())
+  content     String
+  authorId    String
+  postId      String
+  parentId    String? 
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime? @updatedAt @map("updated_at")
+  
+  // Relacionamento
+  author      User     @relation(fields: [authorId], references: [id])
+  post        Post     @relation(fields: [postId], references: [id])
+  complaints  Complaint[]
+
+  // Auto-relacionamento
+  parent      Comment?   @relation("CommentToReplies", fields: [parentId], references: [id])
+  replies     Comment[]  @relation("CommentToReplies")
+
+  @@map("comments")
+}
+
+model Complaint {
+  id            String      @id @default(uuid())
+  reason        String
+  description   String?
+  status        String      @default("PENDING")
+  analysesComplaints Json?
+  appraiser     String?
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime?   @updatedAt @map("updated_at")
+
+  // Relacionamento
+  postId        String?
+  commentId     String?
+  reporterId    String
+  reportedUserId String
+
+  post          Post?       @relation(fields: [postId], references: [id])
+  comment       Comment?    @relation(fields: [commentId], references: [id])
+
+
+  @@map("complaints")
+}
