@@ -1091,7 +1091,7 @@ Commit: `docs(payments): add module README`.
 
 ## Fase 5 — Módulos de conteúdo
 
-### Task 19: README do módulo `posts`
+### Task 19: README do módulo `posts` — CONCLUÍDA
 
 **Files:**
 - Create: `src/modules/posts/README.md`
@@ -1108,7 +1108,7 @@ Commit: `docs(posts): add module README`.
 
 ---
 
-### Task 20: README do módulo `comments`
+### Task 20: README do módulo `comments` — CONCLUÍDA
 
 **Files:**
 - Create: `src/modules/comments/README.md`
@@ -1124,7 +1124,7 @@ Commit: `docs(comments): add module README`.
 
 ---
 
-### Task 21: README do módulo `complaints`
+### Task 21: README do módulo `complaints` — CONCLUÍDA
 
 **Files:**
 - Create: `src/modules/complaints/README.md`
@@ -1141,7 +1141,7 @@ Commit: `docs(complaints): add module README`.
 
 ---
 
-### Task 22: README do módulo `upload-medias`
+### Task 22: README do módulo `upload-medias` — CONCLUÍDA
 
 **Files:**
 - Create: `src/modules/upload-medias/README.md`
@@ -1161,7 +1161,7 @@ Commit: `docs(upload-medias): add module README`.
 
 ## Fase 6 — Módulos de integração e operação
 
-### Task 23: README do módulo `gcp`
+### Task 23: README do módulo `gcp` — CONCLUÍDA
 
 **Files:**
 - Create: `src/modules/gcp/README.md`
@@ -1177,7 +1177,7 @@ Commit: `docs(gcp): add module README`.
 
 ---
 
-### Task 24: README do módulo `assistant_ai`
+### Task 24: README do módulo `assistant_ai` — CONCLUÍDA
 
 **Files:**
 - Create: `src/modules/assistant_ai/README.md`
@@ -1205,7 +1205,7 @@ Commit: `docs(assistant_ai): add module README with n8n-agent workflow note`.
 
 ---
 
-### Task 25: README do módulo `reporting`
+### Task 25: README do módulo `reporting` — CONCLUÍDA
 
 **Files:**
 - Create: `src/modules/reporting/README.md`
@@ -1223,7 +1223,7 @@ Commit: `docs(reporting): add module README`.
 
 ## Fase 7 — Pastas raiz de integração
 
-### Task 26: README de `src/aws/`
+### Task 26: README de `src/aws/` — CONCLUÍDA
 
 **Files:**
 - Create: `src/aws/README.md`
@@ -1267,7 +1267,7 @@ Resultado do grep reverso.
 
 ---
 
-### Task 27: README de `src/llm-service/`
+### Task 27: README de `src/llm-service/` — CONCLUÍDA
 
 **Files:**
 - Create: `src/llm-service/README.md`
