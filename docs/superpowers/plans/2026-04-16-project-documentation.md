@@ -42,7 +42,7 @@ git diff --cached --name-only | grep -v '\.md$' && echo "ERRO: arquivo não-md s
 
 ## Fase 1 — Documentos transversais em `docs/`
 
-### Task 1: `docs/data-model.md` (ERD e tabelas de entidades)
+### Task 1: `docs/data-model.md` (ERD e tabelas de entidades) — CONCLUÍDA
 
 **Por que primeiro?** Todo README de módulo referencia entidades. Ter o ERD pronto vira referência única.
 
@@ -50,7 +50,7 @@ git diff --cached --name-only | grep -v '\.md$' && echo "ERRO: arquivo não-md s
 - Create: `docs/data-model.md`
 - Read (referência): `prisma/schema.prisma`
 
-- [ ] **Step 1: Ler o schema completo**
+- [x] **Step 1: Ler o schema completo**
 
 ```bash
 cat prisma/schema.prisma | wc -l   # esperado: ~220 linhas
@@ -58,7 +58,7 @@ cat prisma/schema.prisma | wc -l   # esperado: ~220 linhas
 
 Identificar os 11 modelos: `User`, `Address`, `Role`, `Plan`, `Subscription`, `SubscriptionStatus`, `Payment`, `Post`, `Comment`, `Complaint`, e quaisquer outros que aparecerem.
 
-- [ ] **Step 2: Escrever `docs/data-model.md` com esta estrutura**
+- [x] **Step 2: Escrever `docs/data-model.md` com esta estrutura**
 
 ```markdown
 # Modelo de Dados
@@ -158,7 +158,7 @@ Ver `prisma/migrations/` para histórico de mudanças do schema.
 
 Preencher todas as tabelas com os campos reais lidos do `schema.prisma`. Não omitir campos.
 
-- [ ] **Step 3: Verificar**
+- [x] **Step 3: Verificar**
 
 Run: `grep -c "^### " docs/data-model.md`
 Expected: ≥ 11 (uma subseção por entidade) + 1 (Diagrama) + 1 (Cardinalidades) + 1 (Soft-delete) + 1 (Migrations) = ≥ 15
@@ -166,7 +166,7 @@ Expected: ≥ 11 (uma subseção por entidade) + 1 (Diagrama) + 1 (Cardinalidade
 Run: `git diff --stat`
 Expected: apenas `docs/data-model.md` criado, 0 arquivos de código alterados.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/data-model.md
@@ -177,13 +177,13 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
 
 ---
 
-### Task 2: `docs/architecture.md`
+### Task 2: `docs/architecture.md` — CONCLUÍDA
 
 **Files:**
 - Create: `docs/architecture.md`
 - Read: `src/main.ts`, `src/app.module.ts`, `nest-cli.json`, `src/schema.gql`
 
-- [ ] **Step 1: Ler arquivos de bootstrap**
+- [x] **Step 1: Ler arquivos de bootstrap**
 
 ```bash
 cat src/main.ts src/app.module.ts
@@ -191,7 +191,7 @@ cat src/main.ts src/app.module.ts
 
 Catalogar: configuração do Apollo (playground, introspection, path `/graphql`), módulos incluídos no schema GraphQL (`include: [...]`), e integrações (Redis comentado, ScheduleModule, ConfigModule).
 
-- [ ] **Step 2: Escrever `docs/architecture.md`**
+- [x] **Step 2: Escrever `docs/architecture.md`**
 
 ```markdown
 # Arquitetura
@@ -287,12 +287,12 @@ transportes. Verificar cada módulo para detalhes.
 - Produção: `npm run build` + `npm run start:prod`.
 ```
 
-- [ ] **Step 3: Verificar**
+- [x] **Step 3: Verificar**
 
 Run: `grep -c "^##" docs/architecture.md`
 Expected: ≥ 6
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/architecture.md
@@ -303,13 +303,13 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
 
 ---
 
-### Task 3: `docs/business-rules.md`
+### Task 3: `docs/business-rules.md` — CONCLUÍDA
 
 **Files:**
 - Create: `docs/business-rules.md`
 - Read: `prisma/schema.prisma`, `src/modules/auth/auth.service.ts`, `src/modules/users/users.service.ts`, `src/modules/subscriptions/subscriptions.service.ts`, `src/modules/plans/plans.service.ts`, `src/modules/complaints/complaints.service.ts`, `src/modules/posts/posts.service.ts`
 
-- [ ] **Step 1: Grep por validações e regras**
+- [x] **Step 1: Grep por validações e regras**
 
 ```bash
 # Estados possíveis
@@ -322,7 +322,7 @@ grep -rn "@Roles\|@UseGuards" src/modules --include="*.ts" | head -40
 
 Anotar: estados do User, estados da Subscription, roles existentes, regras em services (ifs que validam antes de persistir).
 
-- [ ] **Step 2: Escrever `docs/business-rules.md`**
+- [x] **Step 2: Escrever `docs/business-rules.md`**
 
 ```markdown
 # Regras de Negócio Transversais
@@ -397,12 +397,12 @@ Posts podem carregar múltiplas imagens (array) e um vídeo. O storage é AWS S3
 Detalhes: [`../src/modules/upload-medias/README.md`](../src/modules/upload-medias/README.md).
 ```
 
-- [ ] **Step 3: Verificar seções**
+- [x] **Step 3: Verificar seções**
 
 Run: `grep -c "^## " docs/business-rules.md`
 Expected: ≥ 7
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/business-rules.md
@@ -413,13 +413,13 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
 
 ---
 
-### Task 4: `docs/conventions.md`
+### Task 4: `docs/conventions.md` — CONCLUÍDA
 
 **Files:**
 - Create: `docs/conventions.md`
 - Read: `tsconfig.json`, `eslint.config.mjs`, `.prettierrc`, `nest-cli.json`, `src/modules/common/pagination.input.ts`, um módulo exemplo (ex.: `users`)
 
-- [ ] **Step 1: Escrever `docs/conventions.md`**
+- [x] **Step 1: Escrever `docs/conventions.md`**
 
 ```markdown
 # Convenções de Código
@@ -497,12 +497,12 @@ Formato observado nos commits existentes: livre. Este projeto adota
   quando houver migration que altere modelos.
 ```
 
-- [ ] **Step 2: Verificar**
+- [x] **Step 2: Verificar**
 
 Run: `grep -c "^## " docs/conventions.md`
 Expected: ≥ 8
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/conventions.md
@@ -513,13 +513,13 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
 
 ---
 
-### Task 5: `docs/infrastructure.md`
+### Task 5: `docs/infrastructure.md` — CONCLUÍDA
 
 **Files:**
 - Create: `docs/infrastructure.md`
 - Read: `Dockerfile`, `docker-compose.yml`, `Makefile`, `ollama-entrypoint.sh`, `main.tf`, `provider.tf`, `variables.tf`, `queue.tf`, conteúdo de `tfenvs/`
 
-- [ ] **Step 1: Ler e catalogar recursos**
+- [x] **Step 1: Ler e catalogar recursos**
 
 ```bash
 wc -l Dockerfile docker-compose.yml Makefile main.tf queue.tf provider.tf variables.tf
@@ -529,7 +529,7 @@ grep -rhoE 'configService\.get[<(]?["'\''<]?[A-Z_]+' src/ | sort -u
 grep -rhoE 'process\.env\.[A-Z_]+' src/ | sort -u
 ```
 
-- [ ] **Step 2: Escrever `docs/infrastructure.md`**
+- [x] **Step 2: Escrever `docs/infrastructure.md`**
 
 ```markdown
 # Infraestrutura
@@ -609,12 +609,12 @@ Tabela consolidada (levantada por grep em `src/`):
 | test / test:watch / test:cov / test:e2e | Jest variants |
 ```
 
-- [ ] **Step 3: Verificar**
+- [x] **Step 3: Verificar**
 
 Run: `grep -c "^## " docs/infrastructure.md`
 Expected: ≥ 6
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/infrastructure.md
@@ -625,12 +625,12 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
 
 ---
 
-### Task 6: `docs/README.md` (índice)
+### Task 6: `docs/README.md` (índice) — CONCLUÍDA
 
 **Files:**
 - Create: `docs/README.md`
 
-- [ ] **Step 1: Escrever índice**
+- [x] **Step 1: Escrever índice**
 
 ```markdown
 # Documentação — Date: Me Encontre Aqui
@@ -700,7 +700,7 @@ sistema de assinaturas e venda de conteúdo para assinantes Ultimate.
 - **Role** — papel do usuário (ex.: user, admin, moderator).
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add docs/README.md
@@ -855,7 +855,7 @@ Resumir o que está coberto e o que claramente não está.
 
 ---
 
-### Task 7: README do módulo `prisma`
+### Task 7: README do módulo `prisma` — CONCLUÍDA
 
 **Por que agora?** Módulo de infra sem dependências — base do grafo.
 
@@ -876,7 +876,7 @@ Commit com mensagem: `docs(prisma): add module README`.
 
 ---
 
-### Task 8: README do módulo `common`
+### Task 8: README do módulo `common` — CONCLUÍDA
 
 **Files:**
 - Create: `src/modules/common/README.md`
@@ -914,7 +914,7 @@ Commit: `docs(common): add utilities README`.
 
 ---
 
-### Task 9: README do módulo `roles`
+### Task 9: README do módulo `roles` — CONCLUÍDA
 
 **Files:**
 - Create: `src/modules/roles/README.md`
@@ -931,7 +931,7 @@ Commit: `docs(roles): add module README`.
 
 ---
 
-### Task 10: README do módulo `sms`
+### Task 10: README do módulo `sms` — CONCLUÍDA
 
 **Files:**
 - Create: `src/modules/sms/README.md`
@@ -950,7 +950,7 @@ Commit: `docs(sms): add module README`.
 
 ## Fase 3 — Módulos de domínio central
 
-### Task 11: README do módulo `addresses`
+### Task 11: README do módulo `addresses` — CONCLUÍDA
 
 **Files:**
 - Create: `src/modules/addresses/README.md`
@@ -966,7 +966,7 @@ Commit: `docs(addresses): add module README`.
 
 ---
 
-### Task 12: README do módulo `users`
+### Task 12: README do módulo `users` — CONCLUÍDA
 
 **Files:**
 - Create: `src/modules/users/README.md`
@@ -984,7 +984,7 @@ Commit: `docs(users): add module README`.
 
 ---
 
-### Task 13: README do módulo `auth`
+### Task 13: README do módulo `auth` — CONCLUÍDA
 
 **Files:**
 - Create: `src/modules/auth/README.md`
@@ -1005,7 +1005,7 @@ Commit: `docs(auth): add module README`.
 
 ## Fase 4 — Módulos de billing/assinatura
 
-### Task 14: README do módulo `plans`
+### Task 14: README do módulo `plans` — CONCLUÍDA
 
 **Files:**
 - Create: `src/modules/plans/README.md`
@@ -1022,7 +1022,7 @@ Commit: `docs(plans): add module README`.
 
 ---
 
-### Task 15: README do módulo `subscription-status`
+### Task 15: README do módulo `subscription-status` — CONCLUÍDA
 
 **Files:**
 - Create: `src/modules/subscription-status/README.md`
@@ -1037,7 +1037,7 @@ Commit: `docs(subscription-status): add module README`.
 
 ---
 
-### Task 16: README do módulo `subscriptions`
+### Task 16: README do módulo `subscriptions` — CONCLUÍDA
 
 **Files:**
 - Create: `src/modules/subscriptions/README.md`
@@ -1053,7 +1053,7 @@ Commit: `docs(subscriptions): add module README`.
 
 ---
 
-### Task 17: README do módulo `pag-seguro`
+### Task 17: README do módulo `pag-seguro` — CONCLUÍDA
 
 **Files:**
 - Create: `src/modules/pag-seguro/README.md`
@@ -1071,7 +1071,7 @@ Commit: `docs(pag-seguro): add module README`.
 
 ---
 
-### Task 18: README do módulo `payments`
+### Task 18: README do módulo `payments` — CONCLUÍDA
 
 **Files:**
 - Create: `src/modules/payments/README.md`
