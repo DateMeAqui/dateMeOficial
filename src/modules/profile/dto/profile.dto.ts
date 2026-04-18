@@ -6,7 +6,7 @@ export class ProfileDTO {
   @Field(() => ID)
   id: string;
 
-  @Field()
+  @Field(() => ID)
   userId: string;
 
   @Field(() => Gender)
