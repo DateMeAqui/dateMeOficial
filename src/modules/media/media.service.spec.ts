@@ -92,4 +92,57 @@ describe('MediaService', () => {
       await expect(service.resolveUrls(['m1', 'm2'])).rejects.toThrow(BadRequestException);
     });
   });
+
+  describe('addGalleryPhoto', () => {
+    it('valida ownership, cria Photo, attaches media', async () => {
+      prisma.media.findMany.mockResolvedValue([
+        { id: 'm1', ownerId: 'u1', attachedAt: null, url: '/uploads/x.png', kind: 'image' },
+      ]);
+      prisma.photo = { create: jest.fn().mockResolvedValue({ id: 'p1', url: '/uploads/x.png', userId: 'u1' }) };
+      prisma.media.update = jest.fn().mockResolvedValue({});
+      const out = await service.addGalleryPhoto('m1', 'u1');
+      expect(out.id).toBe('p1');
+      expect(prisma.photo.create).toHaveBeenCalledWith({
+        data: { url: '/uploads/x.png', userId: 'u1' },
+      });
+      expect(prisma.media.update).toHaveBeenCalled();
+    });
+
+    it('rejeita vídeo na galeria', async () => {
+      prisma.media.findMany.mockResolvedValue([
+        { id: 'm1', ownerId: 'u1', attachedAt: null, url: '/uploads/x.mp4', kind: 'video' },
+      ]);
+      await expect(service.addGalleryPhoto('m1', 'u1')).rejects.toThrow();
+    });
+  });
+
+  describe('removeGalleryPhoto', () => {
+    it('apaga photo se pertencer ao user', async () => {
+      prisma.photo = {
+        findUnique: jest.fn().mockResolvedValue({ id: 'p1', userId: 'u1' }),
+        delete: jest.fn().mockResolvedValue({}),
+      };
+      await service.removeGalleryPhoto('p1', 'u1');
+      expect(prisma.photo.delete).toHaveBeenCalledWith({ where: { id: 'p1' } });
+    });
+
+    it('lança ForbiddenException se photo não for do user', async () => {
+      prisma.photo = {
+        findUnique: jest.fn().mockResolvedValue({ id: 'p1', userId: 'u2' }),
+      };
+      await expect(service.removeGalleryPhoto('p1', 'u1')).rejects.toThrow();
+    });
+  });
+
+  describe('listGalleryPhotos', () => {
+    it('retorna photos do user ordenadas por createdAt desc', async () => {
+      prisma.photo = { findMany: jest.fn().mockResolvedValue([{ id: 'p1' }, { id: 'p2' }]) };
+      const out = await service.listGalleryPhotos('u1');
+      expect(prisma.photo.findMany).toHaveBeenCalledWith({
+        where: { userId: 'u1' },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect(out).toHaveLength(2);
+    });
+  });
 });

@@ -87,4 +87,39 @@ export class MediaService {
     if (videos.length > 1) throw new BadRequestException('Only one video per post.');
     return { imageUrls, videoUrl: videos[0]?.url };
   }
+
+  async addGalleryPhoto(mediaId: string, userId: string) {
+    const rows = await this.prisma.media.findMany({
+      where: { id: { in: [mediaId] } },
+      select: { id: true, ownerId: true, attachedAt: true, url: true, kind: true },
+    });
+    if (rows.length === 0) throw new ForbiddenException('Media not found.');
+    const media = rows[0];
+    if (media.ownerId !== userId) throw new ForbiddenException('Media not owned.');
+    if (media.attachedAt) throw new ForbiddenException('Media already attached.');
+    if (media.kind !== 'image') throw new BadRequestException('Gallery accepts images only.');
+
+    const photo = await this.prisma.photo.create({
+      data: { url: media.url, userId },
+    });
+    await this.prisma.media.update({
+      where: { id: mediaId },
+      data: { photoId: photo.id, attachedAt: new Date() },
+    });
+    return photo;
+  }
+
+  async removeGalleryPhoto(photoId: string, userId: string) {
+    const photo = await this.prisma.photo.findUnique({ where: { id: photoId } });
+    if (!photo) throw new ForbiddenException('Photo not found.');
+    if (photo.userId !== userId) throw new ForbiddenException('Photo not owned.');
+    await this.prisma.photo.delete({ where: { id: photoId } });
+  }
+
+  async listGalleryPhotos(userId: string) {
+    return this.prisma.photo.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }
