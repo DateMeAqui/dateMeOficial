@@ -4,6 +4,7 @@ import { AuthResolver } from './auth.resolver';
 import { redisStore } from 'cache-manager-redis-yet';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GqlAuthGuard } from './guards/qgl-auth.guard';
+import { JwtRestAuthGuard } from './guards/jwt-rest-auth.guard';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { AuthService } from './auth.service';
 import { JwtModule } from '@nestjs/jwt';
@@ -35,10 +36,11 @@ import { UsersModule } from '../users/users.module';
    providers: [
     JwtAuthGuard,
     GqlAuthGuard,
+    JwtRestAuthGuard,
     JwtStrategy,
     AuthService,
     AuthResolver,
   ],
-  exports: [JwtModule, PassportModule, JwtAuthGuard, GqlAuthGuard, AuthService],
+  exports: [JwtModule, PassportModule, JwtAuthGuard, GqlAuthGuard, JwtRestAuthGuard, AuthService],
 })
 export class AuthModule {}
