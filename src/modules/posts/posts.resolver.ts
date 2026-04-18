@@ -17,7 +17,6 @@ export class PostsResolver {
     @Args('createPostInput') createPostInput: CreatePostInput,
     @CurrentUser() user: User
   ) {
-    console.log('User creating post:', user);
     createPostInput.authorId = user.id;
     return this.postsService.create(createPostInput);
   }
