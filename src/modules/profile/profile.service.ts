@@ -31,7 +31,11 @@ export class ProfileService {
   updateByUserId(userId: string, input: UpdateProfileInput) {
     return this.prisma.profile.update({
       where: { userId },
-      data: input,
+      data: {
+        gender: input.gender,
+        preferences: input.preferences,
+        bio: input.bio,
+      },
     });
   }
 }
