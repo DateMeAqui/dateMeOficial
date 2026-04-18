@@ -45,7 +45,12 @@ model User {
   posts                 Post[]
   comments              Comment[]
 
-  
+  avatarUrl             String?   @map("avatar_url")
+  avatarMediaId         String?   @unique @map("avatar_media_id")
+  avatarMedia           Media?    @relation("UserAvatar", fields: [avatarMediaId], references: [id])
+  photos                Photo[]
+  medias                Media[]   @relation("MediaOwner")
+
   @@map("users")
 }
 
@@ -170,6 +175,7 @@ model Post {
   author              User      @relation(fields: [authorId], references: [id])
   comments            Comment[]
   complaints          Complaint[]
+  medias              Media[]
 
   @@map("posts")
 }
@@ -191,6 +197,10 @@ model Comment {
   // Auto-relacionamento
   parent      Comment?   @relation("CommentToReplies", fields: [parentId], references: [id])
   replies     Comment[]  @relation("CommentToReplies")
+
+  imageUrl    String[]  @default([]) @map("image_url")
+  videoUrl    String?   @map("video_url")
+  medias      Media[]
 
   @@map("comments")
 }
@@ -216,4 +226,42 @@ model Complaint {
 
 
   @@map("complaints")
+}
+
+model Photo {
+  id         String   @id @default(uuid())
+  url        String
+  userId     String   @map("user_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media      Media?
+
+  @@map("photos")
+}
+
+model Media {
+  id              String    @id @default(uuid())
+  ownerId         String    @map("owner_id")
+  kind            String
+  url             String
+  filename        String
+  postId          String?   @map("post_id")
+  commentId       String?   @map("comment_id")
+  photoId         String?   @unique @map("photo_id")
+  userAvatarId    String?   @unique @map("user_avatar_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  attachedAt      DateTime? @map("attached_at")
+
+  owner           User      @relation("MediaOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  post            Post?     @relation(fields: [postId], references: [id], onDelete: SetNull)
+  comment         Comment?  @relation(fields: [commentId], references: [id], onDelete: SetNull)
+  photo           Photo?    @relation(fields: [photoId], references: [id])
+  userAvatar      User?     @relation("UserAvatar")
+
+  @@index([ownerId])
+  @@index([postId])
+  @@index([commentId])
+  @@index([createdAt, attachedAt])
+  @@map("medias")
 }
