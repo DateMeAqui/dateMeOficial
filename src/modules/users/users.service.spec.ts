@@ -132,3 +132,20 @@ describe('UsersService', () => {
   });
 
 });
+
+describe('UsersService updateAvatar', () => {
+  it('delega pra MediaService.attachToUserAvatar e atualiza avatarUrl', async () => {
+    const mediaService = { attachToUserAvatar: jest.fn().mockResolvedValue('/uploads/x.png') };
+    const prisma = {
+      user: { update: jest.fn().mockResolvedValue({ id: 'u1', avatarUrl: '/uploads/x.png' }) },
+    };
+    const svc = new UsersService(prisma as any, null as any, null as any, mediaService as any);
+    const out = await svc.updateAvatar('u1', 'm1');
+    expect(mediaService.attachToUserAvatar).toHaveBeenCalledWith('m1', 'u1');
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      data: { avatarUrl: '/uploads/x.png', avatarMediaId: 'm1' },
+    });
+    expect(out.avatarUrl).toBe('/uploads/x.png');
+  });
+});
