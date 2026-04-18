@@ -1,4 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { unlink } from 'fs/promises';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type MediaKind = 'image' | 'video';
@@ -17,7 +19,10 @@ export interface ResolvedMediaUrls {
 
 @Injectable()
 export class MediaService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fs: { unlink: (path: string) => Promise<void> } = { unlink },
+  ) {}
 
   async recordUpload(input: RecordUploadInput) {
     return this.prisma.media.create({ data: input });
@@ -121,5 +126,33 @@ export class MediaService {
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  @Cron(CronExpression.EVERY_HOUR)
+  async cleanupOrphans(): Promise<number> {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const orphans = await this.prisma.media.findMany({
+      where: {
+        attachedAt: null,
+        postId: null,
+        commentId: null,
+        photoId: null,
+        userAvatarId: null,
+        createdAt: { lt: oneHourAgo },
+      },
+      select: { id: true, filename: true },
+    });
+
+    if (orphans.length === 0) return 0;
+
+    await Promise.all(
+      orphans.map((m) =>
+        this.fs.unlink(`uploads/${m.filename}`).catch(() => undefined),
+      ),
+    );
+
+    const ids = orphans.map((m) => m.id);
+    await this.prisma.media.deleteMany({ where: { id: { in: ids } } });
+    return orphans.length;
   }
 }

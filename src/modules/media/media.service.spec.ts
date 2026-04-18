@@ -145,4 +145,61 @@ describe('MediaService', () => {
       expect(out).toHaveLength(2);
     });
   });
+
+  describe('cleanupOrphans', () => {
+    let fsMock: { unlink: jest.Mock };
+    let svc: MediaService;
+
+    beforeEach(() => {
+      fsMock = { unlink: jest.fn().mockResolvedValue(undefined) };
+      prisma.media.findMany = jest.fn();
+      prisma.media.deleteMany = jest.fn();
+      svc = new MediaService(prisma as any, fsMock as any);
+    });
+
+    it('remove arquivos e rows órfãos', async () => {
+      prisma.media.findMany.mockResolvedValue([
+        { id: 'm1', filename: 'a.png' },
+        { id: 'm2', filename: 'b.mp4' },
+      ]);
+      prisma.media.deleteMany.mockResolvedValue({ count: 2 });
+
+      const removed = await svc.cleanupOrphans();
+
+      expect(prisma.media.findMany).toHaveBeenCalledWith({
+        where: {
+          attachedAt: null,
+          postId: null,
+          commentId: null,
+          photoId: null,
+          userAvatarId: null,
+          createdAt: { lt: expect.any(Date) },
+        },
+        select: { id: true, filename: true },
+      });
+      expect(fsMock.unlink).toHaveBeenCalledTimes(2);
+      expect(fsMock.unlink).toHaveBeenCalledWith('uploads/a.png');
+      expect(fsMock.unlink).toHaveBeenCalledWith('uploads/b.mp4');
+      expect(prisma.media.deleteMany).toHaveBeenCalledWith({ where: { id: { in: ['m1', 'm2'] } } });
+      expect(removed).toBe(2);
+    });
+
+    it('no-op se nada órfão', async () => {
+      prisma.media.findMany.mockResolvedValue([]);
+      const removed = await svc.cleanupOrphans();
+      expect(fsMock.unlink).not.toHaveBeenCalled();
+      expect(prisma.media.deleteMany).not.toHaveBeenCalled();
+      expect(removed).toBe(0);
+    });
+
+    it('ignora erro de unlink e ainda apaga row', async () => {
+      prisma.media.findMany.mockResolvedValue([{ id: 'm1', filename: 'a.png' }]);
+      fsMock.unlink.mockRejectedValueOnce(new Error('ENOENT'));
+      prisma.media.deleteMany.mockResolvedValue({ count: 1 });
+
+      const removed = await svc.cleanupOrphans();
+      expect(prisma.media.deleteMany).toHaveBeenCalled();
+      expect(removed).toBe(1);
+    });
+  });
 });
