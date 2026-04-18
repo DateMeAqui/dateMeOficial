@@ -1,4 +1,4 @@
-import { ObjectType, Field } from '@nestjs/graphql';
+import { ObjectType, Field, ID } from '@nestjs/graphql';
 
 @ObjectType()
 export class UploadResponseDto {
@@ -13,5 +13,10 @@ export class UploadResponseDto {
 
   @Field(() => [String], { nullable: true })
   fileUrls?: string[];
-}
 
+  @Field(() => ID, { nullable: true })
+  mediaId?: string;
+
+  @Field(() => [ID], { nullable: true })
+  mediaIds?: string[];
+}
