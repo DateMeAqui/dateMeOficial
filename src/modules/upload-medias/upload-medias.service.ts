@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { IMAGE_MIMETYPES, VIDEO_MIMETYPES } from './constants';
+import { IMAGE_MIMETYPES, VIDEO_MIMETYPES } from './config/media-mimetypes';
 
 export type MediaKind = 'image' | 'video';
 

@@ -11,3 +11,10 @@ export const VIDEO_MIMETYPES = [
   'video/mov',
   'video/mkv',
 ] as const;
+
+export const ALL_MEDIA_MIMETYPES = [
+  ...IMAGE_MIMETYPES,
+  ...VIDEO_MIMETYPES,
+] as const;
+
+export const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
