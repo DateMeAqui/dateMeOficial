@@ -9,6 +9,7 @@ import { StatusUser } from './enums/status_user.enum';
 import { Cron } from '@nestjs/schedule';
 import { SearchUserInput } from './dto/search-user.input';
 import { CalculateDateBrazilNow } from '../../utils/calculate_date_brazil_now'
+import { MediaService } from '../media/media.service';
 
 @Injectable()
 export class UsersService {
@@ -16,7 +17,8 @@ export class UsersService {
   constructor(
     private prisma: PrismaService,
     private sms: SmsService,
-    private calculateDateBrazilNow: CalculateDateBrazilNow
+    private calculateDateBrazilNow: CalculateDateBrazilNow,
+    private mediaService: MediaService,
   ){}
 
   async create(createUserInput: CreateUserInput): Promise<User>{
@@ -290,7 +292,15 @@ export class UsersService {
     return updateUser;
   }
 
-  //Método para calcular a idade 
+  async updateAvatar(userId: string, mediaId: string) {
+    const url = await this.mediaService.attachToUserAvatar(mediaId, userId);
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl: url, avatarMediaId: mediaId },
+    });
+  }
+
+  //Método para calcular a idade
   private calculateAge(birthdateUser: Date): number {
     const today = new Date();
     const birthdate = new Date(birthdateUser);

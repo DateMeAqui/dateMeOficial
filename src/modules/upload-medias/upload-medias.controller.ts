@@ -13,7 +13,9 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { IsIn } from 'class-validator';
+import { CurrentUserRest } from '../auth/decorators/current-user-rest.decorator';
 import { JwtRestAuthGuard } from '../auth/guards/jwt-rest-auth.guard';
+import { MediaService } from '../media/media.service';
 import {
   ALL_MEDIA_MIMETYPES,
   MAX_FILE_SIZE_BYTES,
@@ -47,7 +49,10 @@ const parseSingleFilePipe = () =>
 @Controller('upload-medias')
 @UseGuards(JwtRestAuthGuard)
 export class UploadMediasController {
-  constructor(private readonly uploadMediasService: UploadMediasService) {}
+  constructor(
+    private readonly uploadMediasService: UploadMediasService,
+    private readonly mediaService: MediaService,
+  ) {}
 
   @Post('single')
   @HttpCode(HttpStatus.OK)
@@ -55,6 +60,7 @@ export class UploadMediasController {
   async uploadSingleFile(
     @UploadedFile(parseSingleFilePipe()) file: Express.Multer.File,
     @Body() body: UploadKindDto,
+    @CurrentUserRest() user: { id: string },
   ): Promise<UploadResponseDto> {
     if (!file) {
       throw new BadRequestException('No file provided');
@@ -62,10 +68,19 @@ export class UploadMediasController {
 
     this.uploadMediasService.assertMimetypeMatchesKind(file, body.kind);
 
+    const url = this.uploadMediasService.buildUrl(file);
+    const media = await this.mediaService.recordUpload({
+      ownerId: user.id,
+      kind: body.kind,
+      url,
+      filename: file.filename,
+    });
+
     return {
       success: true,
       message: 'File uploaded successfully',
-      fileUrl: this.uploadMediasService.buildUrl(file),
+      fileUrl: url,
+      mediaId: media.id,
     };
   }
 
@@ -75,6 +90,7 @@ export class UploadMediasController {
   async uploadMultipleFiles(
     @UploadedFiles() files: Express.Multer.File[],
     @Body() body: UploadKindDto,
+    @CurrentUserRest() user: { id: string },
   ): Promise<UploadResponseDto> {
     if (!files || files.length === 0) {
       throw new BadRequestException('No files provided');
@@ -84,10 +100,23 @@ export class UploadMediasController {
       this.uploadMediasService.assertMimetypeMatchesKind(f, body.kind),
     );
 
+    const urls = files.map((f) => this.uploadMediasService.buildUrl(f));
+    const medias = await Promise.all(
+      files.map((f, idx) =>
+        this.mediaService.recordUpload({
+          ownerId: user.id,
+          kind: body.kind,
+          url: urls[idx],
+          filename: f.filename,
+        }),
+      ),
+    );
+
     return {
       success: true,
       message: 'Files uploaded successfully',
-      fileUrls: files.map((f) => this.uploadMediasService.buildUrl(f)),
+      fileUrls: urls,
+      mediaIds: medias.map((m) => m.id),
     };
   }
 }

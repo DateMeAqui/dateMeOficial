@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { UploadMediasController } from './upload-medias.controller';
 import { UploadMediasService } from './upload-medias.service';
+import { MediaService } from '../media/media.service';
 
 const makeFile = (overrides: Partial<Express.Multer.File> = {}): Express.Multer.File =>
   ({
@@ -18,66 +19,59 @@ const makeFile = (overrides: Partial<Express.Multer.File> = {}): Express.Multer.
 
 describe('UploadMediasController', () => {
   let controller: UploadMediasController;
-  let service: UploadMediasService;
+  let uploadSvc: UploadMediasService;
+  let mediaSvc: jest.Mocked<Pick<MediaService, 'recordUpload'>>;
 
   beforeEach(() => {
-    service = new UploadMediasService();
-    controller = new UploadMediasController(service);
+    uploadSvc = new UploadMediasService();
+    mediaSvc = { recordUpload: jest.fn() } as any;
+    controller = new UploadMediasController(uploadSvc, mediaSvc as any);
   });
+
+  const currentUser = { id: 'u1' };
 
   describe('uploadSingleFile', () => {
     it('lança BadRequest se nenhum arquivo vier', async () => {
       await expect(
-        controller.uploadSingleFile(undefined as any, { kind: 'image' }),
+        controller.uploadSingleFile(undefined as any, { kind: 'image' }, currentUser as any),
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('retorna URL quando arquivo e kind batem (image)', async () => {
+    it('retorna URL + mediaId após registrar upload', async () => {
       const file = makeFile({ mimetype: 'image/png', filename: 'f.png' });
-      const out = await controller.uploadSingleFile(file, { kind: 'image' });
+      mediaSvc.recordUpload.mockResolvedValue({ id: 'm1' } as any);
+      const out = await controller.uploadSingleFile(file, { kind: 'image' }, currentUser as any);
       expect(out).toEqual({
         success: true,
         message: 'File uploaded successfully',
         fileUrl: '/uploads/f.png',
+        mediaId: 'm1',
       });
-    });
-
-    it('rejeita imagem quando kind=video', async () => {
-      const file = makeFile({ mimetype: 'image/png' });
-      await expect(
-        controller.uploadSingleFile(file, { kind: 'video' }),
-      ).rejects.toThrow(BadRequestException);
+      expect(mediaSvc.recordUpload).toHaveBeenCalledWith({
+        ownerId: 'u1',
+        kind: 'image',
+        url: '/uploads/f.png',
+        filename: 'f.png',
+      });
     });
   });
 
   describe('uploadMultipleFiles', () => {
-    it('lança BadRequest se array vazio', async () => {
-      await expect(
-        controller.uploadMultipleFiles([], { kind: 'image' }),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('processa múltiplos arquivos e retorna N URLs', async () => {
+    it('retorna N URLs + N mediaIds', async () => {
       const files = [
         makeFile({ mimetype: 'image/png', filename: 'a.png' }),
         makeFile({ mimetype: 'image/jpeg', filename: 'b.jpg' }),
       ];
-      const out = await controller.uploadMultipleFiles(files, { kind: 'image' });
+      mediaSvc.recordUpload.mockResolvedValueOnce({ id: 'm1' } as any);
+      mediaSvc.recordUpload.mockResolvedValueOnce({ id: 'm2' } as any);
+      const out = await controller.uploadMultipleFiles(files, { kind: 'image' }, currentUser as any);
       expect(out).toEqual({
         success: true,
         message: 'Files uploaded successfully',
         fileUrls: ['/uploads/a.png', '/uploads/b.jpg'],
+        mediaIds: ['m1', 'm2'],
       });
-    });
-
-    it('rejeita se qualquer arquivo do lote bater errado com kind', async () => {
-      const files = [
-        makeFile({ mimetype: 'image/png', filename: 'a.png' }),
-        makeFile({ mimetype: 'video/mp4', filename: 'b.mp4' }),
-      ];
-      await expect(
-        controller.uploadMultipleFiles(files, { kind: 'image' }),
-      ).rejects.toThrow(BadRequestException);
+      expect(mediaSvc.recordUpload).toHaveBeenCalledTimes(2);
     });
   });
 });

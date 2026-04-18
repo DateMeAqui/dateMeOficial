@@ -1,5 +1,5 @@
-import { InputType, Int, Field } from '@nestjs/graphql';
-import { IsString } from 'class-validator';
+import { InputType, Field, ID } from '@nestjs/graphql';
+import { IsString, IsOptional, IsArray } from 'class-validator';
 
 @InputType()
 export class CreatePostInput {
@@ -7,19 +7,10 @@ export class CreatePostInput {
   @IsString()
   content: string;
 
-  @Field(() => [String], { nullable: true })
-  @IsString({ each: true })
-  imageUrl?: string[];
+  @Field(() => [ID], { nullable: true, defaultValue: [] })
+  @IsOptional()
+  @IsArray()
+  mediaIds?: string[];
 
-  @Field({ nullable: true })
-  @IsString()
-  videoUrl?: string;
-
-  // @Field(() => Comment, { nullable: true })
-  // comments?: Comment[];
-
-
-  authorId!: string; 
-
- 
+  authorId!: string;
 }

@@ -25,6 +25,7 @@ import { AssistantAiModule } from './modules/assistant_ai/assistant_ai.module';
 import { CommentsModule } from './modules/comments/comments.module';
 import { GcpModule } from './modules/gcp/gcp.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
+import { MediaModule } from './modules/media/media.module';
 
 @Module({
   imports: [
@@ -57,7 +58,7 @@ import { ReportingModule } from './modules/reporting/reporting.module';
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       // resolvers: { Upload: GraphQLUpload }, // Temporarily disabled due to graphql-upload compatibility issues
       include: [
-        AuthModule, 
+        AuthModule,
         PagSeguroModule,
         PlansModule,
         SubscriptionsModule,
@@ -65,7 +66,10 @@ import { ReportingModule } from './modules/reporting/reporting.module';
         PaymentsModule,
         PostsModule,
         UploadMediasModule,
-        ComplaintsModule
+        ComplaintsModule,
+        UsersModule,
+        MediaModule,
+        CommentsModule,
       ],
       introspection: true,
       playground: true
@@ -88,6 +92,7 @@ import { ReportingModule } from './modules/reporting/reporting.module';
     CommentsModule,
     GcpModule,
     ReportingModule,
+    MediaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -196,6 +196,7 @@ Todos os handlers estão em [`./users.resolver.ts`](./users.resolver.ts).
 | `verificationCode` | `code: Int`, `userId?: String`, `@CurrentUser() me` | `UserWithAgeDTO` | `GqlAuthGuard` + `RolesGuard` (`ADMIN`, `SUPER_ADMIN`, `USER`) | Compara `code` com `verificationCode` persistido; ativa status para `ACTIVE` quando bate. ([`./users.resolver.ts:68-78`](./users.resolver.ts)) |
 | `deletedUser` | `userId: String` | `UserDTO` | `GqlAuthGuard` + `RolesGuard` (`ADMIN`, `SUPER_ADMIN`) | Hard delete via `prisma.user.delete`. ([`./users.resolver.ts:80-85`](./users.resolver.ts)) |
 | `softDeleted` | `userId: String`, `@CurrentUser() me` | `UserDTO` | `GqlAuthGuard` + `RolesGuard` (`ADMIN`, `SUPER_ADMIN`, `USER`) | Soft delete: grava `deletedAt` e status `INACTIVE`. ([`./users.resolver.ts:87-96`](./users.resolver.ts)) |
+| `updateAvatar` | `mediaId: String`, `@CurrentUser() me` | `User` | `GqlAuthGuard` | **Plan 2.** Valida ownership via `MediaService.attachToUserAvatar` e copia a URL da mídia para `User.avatarUrl`/`avatarMediaId`. Só o próprio user pode trocar seu avatar. |
 
 > **A confirmar**: tanto o decorador `@Mutation(() => User, ...)` no `CreateUser` quanto o retorno `User` aparecem no módulo como o tipo importado de `./entities/user.entity.ts` (linha 3). Os demais retornos explicitamente tipam `UserDTO`/`UserWithAgeDTO` via `./dto/user.dto.ts`. Verificar no schema gerado qual é o tipo efetivamente publicado em cada handler.
 

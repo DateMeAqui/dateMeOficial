@@ -15,6 +15,7 @@ Os arquivos gravados são servidos estaticamente na rota `/uploads/` por `app.us
 5. **Nome do arquivo.** Substituído por `uuidv4()` preservando apenas a extensão original (ver [`./config/multer.config.ts`](./config/multer.config.ts)).
 6. **URL retornada.** `UploadMediasService.buildUrl` devolve caminho relativo `/uploads/<uuid>.<ext>`. Combinado com `app.useStaticAssets` em `main.ts`, esse caminho é servido diretamente pelo Nest.
 7. **Upload múltiplo.** `POST /upload-medias/multiple` usa `FilesInterceptor('files', 10)` — máximo de 10 arquivos por requisição, todos compartilhando o mesmo `kind`.
+8. **Ownership tracking (Plan 2).** Após gravar o arquivo, uma row `Media` é criada via `MediaService.recordUpload` com `ownerId = req.user.id`. A resposta agora inclui `mediaId` (single) ou `mediaIds` (multiple) além de `fileUrl`/`fileUrls`. Mutations downstream (`createPost`, `createComment`, `updateAvatar`, `addGalleryPhoto`) consomem esses IDs e validam ownership antes de attach.
 
 ## 3. Entidades e Modelo de Dados
 
