@@ -14,10 +14,12 @@ e pode ser alvo de `Complaint` (denúncia).
 
 ## 2. Regras de Negócio
 
-> Observação geral: este módulo está em estado embrionário. Os métodos do
-> service retornam strings de placeholder (`"This action adds a new comment"`
-> etc.) sem persistência ou validação. As regras abaixo refletem o que o
-> **schema Prisma** garante hoje.
+> **Atualizado pelo Plan 2 (2026-04-18):** o service agora persiste via
+> Prisma e `CreateCommentInput` tem formato real
+> `{ postId, content, parentId?, mediaIds? }`. A mutation `createComment`
+> exige JWT (`GqlAuthGuard`). Mídias passam por ownership check do
+> `MediaService` antes de serem anexadas. Campos `imageUrl[]`/`videoUrl`
+> foram adicionados à entity/tabela.
 
 1. Um `Comment` pertence obrigatoriamente a um `Post` (FK `postId`) e a um
    `User` (FK `authorId`) — ver [`prisma/schema.prisma:177-196`](../../../prisma/schema.prisma).

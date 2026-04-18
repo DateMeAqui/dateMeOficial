@@ -33,6 +33,12 @@ URLs resultantes.
 6. O relacionamento `author` é carregado em `findAll` e `findOne` via
    `include: { author: true }`. Relações `comments` e `complaints` **não são
    incluídas** nas consultas existentes.
+7. **Mídia via mediaIds (Plan 2).** `createPost` recebe `mediaIds: [ID!]` em
+   vez de URLs cruas. `PostsService.create` chama
+   `MediaService.assertOwnership` (rejeita mídias alheias ou já attached),
+   `resolveUrls` (converte IDs em `imageUrls[]`/`videoUrl`), persiste o post
+   e então `attachToPost(mediaIds, post.id)`. `imageUrl`/`videoUrl` não são
+   mais passados diretamente pelo cliente.
 
 > ⚠️ **A confirmar:** o spec do projeto e
 > [`../../../docs/business-rules.md`](../../../docs/business-rules.md)
