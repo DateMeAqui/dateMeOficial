@@ -1,59 +1,83 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException } from '@nestjs/common';
 import { UploadMediasController } from './upload-medias.controller';
 import { UploadMediasService } from './upload-medias.service';
+
+const makeFile = (overrides: Partial<Express.Multer.File> = {}): Express.Multer.File =>
+  ({
+    fieldname: 'file',
+    originalname: overrides.originalname ?? 'a.jpg',
+    encoding: '7bit',
+    mimetype: overrides.mimetype ?? 'image/jpeg',
+    size: overrides.size ?? 100,
+    destination: './uploads',
+    filename: overrides.filename ?? 'abc-123.jpg',
+    path: `./uploads/${overrides.filename ?? 'abc-123.jpg'}`,
+    stream: null as any,
+    buffer: null as any,
+  }) as Express.Multer.File;
 
 describe('UploadMediasController', () => {
   let controller: UploadMediasController;
   let service: UploadMediasService;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [UploadMediasController],
-      providers: [
-        {
-          provide: UploadMediasService,
-          useValue: {
-            uploadFile: jest.fn(),
-          },
-        },
-      ],
-    }).compile();
-
-    controller = module.get<UploadMediasController>(UploadMediasController);
-    service = module.get<UploadMediasService>(UploadMediasService);
+  beforeEach(() => {
+    service = new UploadMediasService();
+    controller = new UploadMediasController(service);
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
-  it('should upload a single file', async () => {
-    const mockFile = {
-      fieldname: 'file',
-      originalname: 'test.jpg',
-      encoding: '7bit',
-      mimetype: 'image/jpeg',
-      buffer: Buffer.from('test'),
-      size: 4,
-    } as Express.Multer.File;
-
-    const mockResult = '/uploads/test-uuid.jpg';
-    jest.spyOn(service, 'uploadFile').mockResolvedValue(mockResult);
-
-    const result = await controller.uploadSingleFile(mockFile, { isVideo: false });
-
-    expect(result).toEqual({
-      success: true,
-      message: 'File uploaded successfully',
-      fileUrl: mockResult,
+  describe('uploadSingleFile', () => {
+    it('lança BadRequest se nenhum arquivo vier', async () => {
+      await expect(
+        controller.uploadSingleFile(undefined as any, { kind: 'image' }),
+      ).rejects.toThrow(BadRequestException);
     });
-    expect(service.uploadFile).toHaveBeenCalledWith(mockFile, false);
+
+    it('retorna URL quando arquivo e kind batem (image)', async () => {
+      const file = makeFile({ mimetype: 'image/png', filename: 'f.png' });
+      const out = await controller.uploadSingleFile(file, { kind: 'image' });
+      expect(out).toEqual({
+        success: true,
+        message: 'File uploaded successfully',
+        fileUrl: '/uploads/f.png',
+      });
+    });
+
+    it('rejeita imagem quando kind=video', async () => {
+      const file = makeFile({ mimetype: 'image/png' });
+      await expect(
+        controller.uploadSingleFile(file, { kind: 'video' }),
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 
-  it('should throw error when no file provided', async () => {
-    await expect(
-      controller.uploadSingleFile(null, { isVideo: false }),
-    ).rejects.toThrow('No file provided');
+  describe('uploadMultipleFiles', () => {
+    it('lança BadRequest se array vazio', async () => {
+      await expect(
+        controller.uploadMultipleFiles([], { kind: 'image' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('processa múltiplos arquivos e retorna N URLs', async () => {
+      const files = [
+        makeFile({ mimetype: 'image/png', filename: 'a.png' }),
+        makeFile({ mimetype: 'image/jpeg', filename: 'b.jpg' }),
+      ];
+      const out = await controller.uploadMultipleFiles(files, { kind: 'image' });
+      expect(out).toEqual({
+        success: true,
+        message: 'Files uploaded successfully',
+        fileUrls: ['/uploads/a.png', '/uploads/b.jpg'],
+      });
+    });
+
+    it('rejeita se qualquer arquivo do lote bater errado com kind', async () => {
+      const files = [
+        makeFile({ mimetype: 'image/png', filename: 'a.png' }),
+        makeFile({ mimetype: 'video/mp4', filename: 'b.mp4' }),
+      ];
+      await expect(
+        controller.uploadMultipleFiles(files, { kind: 'image' }),
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 });
-
