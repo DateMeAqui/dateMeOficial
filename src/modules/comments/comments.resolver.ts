@@ -1,35 +1,40 @@
-import { Resolver, Query, Mutation, Args, Int } from '@nestjs/graphql';
+import { Resolver, Query, Mutation, Args, ID } from '@nestjs/graphql';
+import { UseGuards } from '@nestjs/common';
 import { CommentsService } from './comments.service';
 import { Comment } from './entities/comment.entity';
 import { CreateCommentInput } from './dto/create-comment.input';
-import { UpdateCommentInput } from './dto/update-comment.input';
+import { GqlAuthGuard } from '../auth/guards/qgl-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Resolver(() => Comment)
 export class CommentsResolver {
   constructor(private readonly commentsService: CommentsService) {}
 
+  @UseGuards(GqlAuthGuard)
   @Mutation(() => Comment)
-  createComment(@Args('createCommentInput') createCommentInput: CreateCommentInput) {
-    return this.commentsService.create(createCommentInput);
+  createComment(
+    @Args('createCommentInput') input: CreateCommentInput,
+    @CurrentUser() me,
+  ) {
+    return this.commentsService.create(me.id, input);
   }
 
-  @Query(() => [Comment], { name: 'comments' })
-  findAll() {
-    return this.commentsService.findAll();
+  @Query(() => [Comment], { name: 'commentsByPost' })
+  findByPost(@Args('postId', { type: () => ID }) postId: string) {
+    return this.commentsService.findByPost(postId);
   }
 
   @Query(() => Comment, { name: 'comment' })
-  findOne(@Args('id', { type: () => Int }) id: number) {
+  findOne(@Args('id', { type: () => ID }) id: string) {
     return this.commentsService.findOne(id);
   }
 
-  @Mutation(() => Comment)
-  updateComment(@Args('updateCommentInput') updateCommentInput: UpdateCommentInput) {
-    return this.commentsService.update(updateCommentInput.id, updateCommentInput);
-  }
-
-  @Mutation(() => Comment)
-  removeComment(@Args('id', { type: () => Int }) id: number) {
-    return this.commentsService.remove(id);
+  @UseGuards(GqlAuthGuard)
+  @Mutation(() => Comment, { name: 'removeComment' })
+  remove(
+    @Args('id', { type: () => ID }) id: string,
+    @CurrentUser() me,
+  ) {
+    return this.commentsService.remove(id, me.id);
   }
 }

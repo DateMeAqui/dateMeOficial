@@ -12,6 +12,12 @@ export class Comment {
   @Field(() => String)
   content: string;
 
+  @Field(() => [String])
+  imageUrl: string[];
+
+  @Field(() => String, { nullable: true })
+  videoUrl?: string;
+
   @Field(() => String)
   postId: string;
 
