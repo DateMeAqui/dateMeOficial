@@ -18,9 +18,6 @@ export class User {
   @Field({nullable: false})
   email: string;
 
-  @Field(() => String, { nullable: true })
-  avatarUrl?: string;
-
   @Field()
   password: string;
 

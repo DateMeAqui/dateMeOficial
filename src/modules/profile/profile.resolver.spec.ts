@@ -89,4 +89,24 @@ describe('ProfileResolver', () => {
       expect(result).toEqual(fake);
     });
   });
+
+  describe('updateMyAvatar', () => {
+    it('calls profileService.updateAvatar with me.id and mediaId', async () => {
+      const updated = { id: 'p1', userId: 'u1', avatarUrl: '/uploads/a.png', avatarMediaId: 'm1' };
+      (profileService as any).updateAvatar = jest.fn().mockResolvedValueOnce(updated);
+
+      const result = await resolver.updateMyAvatar('m1', { id: 'u1' } as any);
+
+      expect((profileService as any).updateAvatar).toHaveBeenCalledWith('u1', 'm1');
+      expect(result).toEqual(updated);
+    });
+
+    it('never uses a userId provided by the client — only me.id from JWT', async () => {
+      (profileService as any).updateAvatar = jest.fn().mockResolvedValueOnce({});
+
+      await resolver.updateMyAvatar('m1', { id: 'auth-user' } as any);
+
+      expect((profileService as any).updateAvatar).toHaveBeenCalledWith('auth-user', 'm1');
+    });
+  });
 });

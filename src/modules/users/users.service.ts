@@ -9,7 +9,6 @@ import { StatusUser } from './enums/status_user.enum';
 import { Cron } from '@nestjs/schedule';
 import { SearchUserInput } from './dto/search-user.input';
 import { CalculateDateBrazilNow } from '../../utils/calculate_date_brazil_now'
-import { MediaService } from '../media/media.service';
 import { ProfileService } from '../profile/profile.service';
 
 @Injectable()
@@ -19,7 +18,6 @@ export class UsersService {
     private prisma: PrismaService,
     private sms: SmsService,
     private calculateDateBrazilNow: CalculateDateBrazilNow,
-    private mediaService: MediaService,
     private profileService: ProfileService,
   ){}
 
@@ -296,14 +294,6 @@ export class UsersService {
     })
     
     return updateUser;
-  }
-
-  async updateAvatar(userId: string, mediaId: string) {
-    const url = await this.mediaService.attachToUserAvatar(mediaId, userId);
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: { avatarUrl: url, avatarMediaId: mediaId },
-    });
   }
 
   //Método para calcular a idade

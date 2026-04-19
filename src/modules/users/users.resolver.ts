@@ -65,15 +65,6 @@ export class UsersResolver {
     return this.usersService.updateUser(id, updateDataUser, me);
   }
 
-  @UseGuards(GqlAuthGuard)
-  @Mutation(() => User, { name: 'updateAvatar' })
-  updateAvatar(
-    @Args('mediaId') mediaId: string,
-    @CurrentUser() me,
-  ) {
-    return this.usersService.updateAvatar(me.id, mediaId);
-  }
-
   @UseGuards(GqlAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN', 'USER')
   @Mutation(() => UserWithAge, {name: 'verificationCode'})

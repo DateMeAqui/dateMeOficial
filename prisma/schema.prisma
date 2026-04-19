@@ -45,9 +45,6 @@ model User {
   posts                 Post[]
   comments              Comment[]
 
-  avatarUrl             String?   @map("avatar_url")
-  avatarMediaId         String?   @unique @map("avatar_media_id")
-  avatarMedia           Media?    @relation("UserAvatar", fields: [avatarMediaId], references: [id])
   photos                Photo[]
   medias                Media[]   @relation("MediaOwner")
 
@@ -252,7 +249,7 @@ model Media {
   postId          String?   @map("post_id")
   commentId       String?   @map("comment_id")
   photoId         String?   @unique @map("photo_id")
-  userAvatarId    String?   @unique @map("user_avatar_id")
+  profileAvatarId String?   @unique @map("profile_avatar_id")
   createdAt       DateTime  @default(now()) @map("created_at")
   attachedAt      DateTime? @map("attached_at")
 
@@ -260,7 +257,7 @@ model Media {
   post            Post?     @relation(fields: [postId], references: [id], onDelete: SetNull)
   comment         Comment?  @relation(fields: [commentId], references: [id], onDelete: SetNull)
   photo           Photo?    @relation(fields: [photoId], references: [id])
-  userAvatar      User?     @relation("UserAvatar")
+  profileAvatar   Profile?  @relation("ProfileAvatar")
 
   @@index([ownerId])
   @@index([postId])
@@ -285,15 +282,18 @@ enum Gender {
 }
 
 model Profile {
-  id          String    @id @default(uuid())
-  userId      String    @unique @map("user_id")
-  gender      Gender
-  preferences Gender[]  @default([])
-  bio         String?   @db.VarChar(500)
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime? @updatedAt       @map("updated_at")
+  id            String    @id @default(uuid())
+  userId        String    @unique @map("user_id")
+  gender        Gender
+  preferences   Gender[]  @default([])
+  bio           String?   @db.VarChar(500)
+  avatarUrl     String?   @map("avatar_url")
+  avatarMediaId String?   @unique @map("avatar_media_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime? @updatedAt       @map("updated_at")
 
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatarMedia   Media?    @relation("ProfileAvatar", fields: [avatarMediaId], references: [id])
 
   @@index([gender])
   @@map("profiles")

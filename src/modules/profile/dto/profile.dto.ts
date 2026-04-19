@@ -18,6 +18,12 @@ export class ProfileDTO {
   @Field(() => String, { nullable: true })
   bio?: string | null;
 
+  @Field(() => String, { nullable: true })
+  avatarUrl?: string | null;
+
+  @Field(() => String, { nullable: true })
+  avatarMediaId?: string | null;
+
   @Field(() => GraphQLISODateTime)
   createdAt: Date;
 
