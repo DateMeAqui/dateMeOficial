@@ -9,7 +9,7 @@ export class Photo {
   url: string;
 
   @Field()
-  userId: string;
+  profileId: string;
 
   @Field()
   createdAt: Date;

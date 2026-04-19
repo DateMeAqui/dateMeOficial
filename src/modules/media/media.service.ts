@@ -104,8 +104,9 @@ export class MediaService {
     if (media.attachedAt) throw new ForbiddenException('Media already attached.');
     if (media.kind !== 'image') throw new BadRequestException('Gallery accepts images only.');
 
+    const profile = await this.prisma.profile.findUniqueOrThrow({ where: { userId } });
     const photo = await this.prisma.photo.create({
-      data: { url: media.url, userId },
+      data: { url: media.url, profileId: profile.id },
     });
     await this.prisma.media.update({
       where: { id: mediaId },
@@ -117,13 +118,15 @@ export class MediaService {
   async removeGalleryPhoto(photoId: string, userId: string) {
     const photo = await this.prisma.photo.findUnique({ where: { id: photoId } });
     if (!photo) throw new ForbiddenException('Photo not found.');
-    if (photo.userId !== userId) throw new ForbiddenException('Photo not owned.');
+    const profile = await this.prisma.profile.findUniqueOrThrow({ where: { userId } });
+    if (photo.profileId !== profile.id) throw new ForbiddenException('Photo not owned.');
     await this.prisma.photo.delete({ where: { id: photoId } });
   }
 
   async listGalleryPhotos(userId: string) {
+    const profile = await this.prisma.profile.findUniqueOrThrow({ where: { userId } });
     return this.prisma.photo.findMany({
-      where: { userId },
+      where: { profileId: profile.id },
       orderBy: { createdAt: 'desc' },
     });
   }
