@@ -292,10 +292,26 @@ model Profile {
   updatedAt     DateTime? @updatedAt       @map("updated_at")
 
   photos        Photo[]
+  followers     Follow[]  @relation("Following")
+  following     Follow[]  @relation("Follower")
 
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   avatarMedia   Media?    @relation("ProfileAvatar", fields: [avatarMediaId], references: [id])
 
   @@index([gender])
   @@map("profiles")
+}
+
+model Follow {
+  followerId  String   @map("follower_id")
+  followingId String   @map("following_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  follower    Profile  @relation("Follower",  fields: [followerId],  references: [id], onDelete: Cascade)
+  following   Profile  @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@map("follows")
 }
