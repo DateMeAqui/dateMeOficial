@@ -45,7 +45,6 @@ model User {
   posts                 Post[]
   comments              Comment[]
 
-  photos                Photo[]
   medias                Media[]   @relation("MediaOwner")
 
   // Relacionamento 1:1 com Profile
@@ -231,10 +230,10 @@ model Complaint {
 model Photo {
   id         String   @id @default(uuid())
   url        String
-  userId     String   @map("user_id")
+  profileId  String   @map("profile_id")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
   media      Media?
 
   @@map("photos")
@@ -291,6 +290,8 @@ model Profile {
   avatarMediaId String?   @unique @map("avatar_media_id")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime? @updatedAt       @map("updated_at")
+
+  photos        Photo[]
 
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   avatarMedia   Media?    @relation("ProfileAvatar", fields: [avatarMediaId], references: [id])
