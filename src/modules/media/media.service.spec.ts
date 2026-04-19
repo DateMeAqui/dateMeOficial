@@ -94,18 +94,22 @@ describe('MediaService', () => {
   });
 
   describe('addGalleryPhoto', () => {
-    it('valida ownership, cria Photo, attaches media', async () => {
+    it('valida ownership, resolve profileId, cria Photo e attaches media', async () => {
       prisma.media.findMany.mockResolvedValue([
         { id: 'm1', ownerId: 'u1', attachedAt: null, url: '/uploads/x.png', kind: 'image' },
       ]);
-      prisma.photo = { create: jest.fn().mockResolvedValue({ id: 'p1', url: '/uploads/x.png', userId: 'u1' }) };
+      prisma.profile = { findUniqueOrThrow: jest.fn().mockResolvedValue({ id: 'prof1', userId: 'u1' }) };
+      prisma.photo = { create: jest.fn().mockResolvedValue({ id: 'ph1', url: '/uploads/x.png', profileId: 'prof1' }) };
       prisma.media.update = jest.fn().mockResolvedValue({});
+
       const out = await service.addGalleryPhoto('m1', 'u1');
-      expect(out.id).toBe('p1');
+
+      expect(prisma.profile.findUniqueOrThrow).toHaveBeenCalledWith({ where: { userId: 'u1' } });
       expect(prisma.photo.create).toHaveBeenCalledWith({
-        data: { url: '/uploads/x.png', userId: 'u1' },
+        data: { url: '/uploads/x.png', profileId: 'prof1' },
       });
       expect(prisma.media.update).toHaveBeenCalled();
+      expect(out.id).toBe('ph1');
     });
 
     it('rejeita vídeo na galeria', async () => {
@@ -117,29 +121,38 @@ describe('MediaService', () => {
   });
 
   describe('removeGalleryPhoto', () => {
-    it('apaga photo se pertencer ao user', async () => {
+    it('apaga photo se pertencer ao profile do user', async () => {
+      prisma.profile = { findUniqueOrThrow: jest.fn().mockResolvedValue({ id: 'prof1', userId: 'u1' }) };
       prisma.photo = {
-        findUnique: jest.fn().mockResolvedValue({ id: 'p1', userId: 'u1' }),
+        findUnique: jest.fn().mockResolvedValue({ id: 'ph1', profileId: 'prof1' }),
         delete: jest.fn().mockResolvedValue({}),
       };
-      await service.removeGalleryPhoto('p1', 'u1');
-      expect(prisma.photo.delete).toHaveBeenCalledWith({ where: { id: 'p1' } });
+
+      await service.removeGalleryPhoto('ph1', 'u1');
+
+      expect(prisma.profile.findUniqueOrThrow).toHaveBeenCalledWith({ where: { userId: 'u1' } });
+      expect(prisma.photo.delete).toHaveBeenCalledWith({ where: { id: 'ph1' } });
     });
 
-    it('lança ForbiddenException se photo não for do user', async () => {
+    it('lança ForbiddenException se photo não pertencer ao profile do user', async () => {
+      prisma.profile = { findUniqueOrThrow: jest.fn().mockResolvedValue({ id: 'prof1', userId: 'u1' }) };
       prisma.photo = {
-        findUnique: jest.fn().mockResolvedValue({ id: 'p1', userId: 'u2' }),
+        findUnique: jest.fn().mockResolvedValue({ id: 'ph1', profileId: 'prof99' }),
       };
-      await expect(service.removeGalleryPhoto('p1', 'u1')).rejects.toThrow();
+      await expect(service.removeGalleryPhoto('ph1', 'u1')).rejects.toThrow(ForbiddenException);
     });
   });
 
   describe('listGalleryPhotos', () => {
-    it('retorna photos do user ordenadas por createdAt desc', async () => {
-      prisma.photo = { findMany: jest.fn().mockResolvedValue([{ id: 'p1' }, { id: 'p2' }]) };
+    it('retorna photos do profile do user ordenadas por createdAt desc', async () => {
+      prisma.profile = { findUniqueOrThrow: jest.fn().mockResolvedValue({ id: 'prof1', userId: 'u1' }) };
+      prisma.photo = { findMany: jest.fn().mockResolvedValue([{ id: 'ph1' }, { id: 'ph2' }]) };
+
       const out = await service.listGalleryPhotos('u1');
+
+      expect(prisma.profile.findUniqueOrThrow).toHaveBeenCalledWith({ where: { userId: 'u1' } });
       expect(prisma.photo.findMany).toHaveBeenCalledWith({
-        where: { userId: 'u1' },
+        where: { profileId: 'prof1' },
         orderBy: { createdAt: 'desc' },
       });
       expect(out).toHaveLength(2);
