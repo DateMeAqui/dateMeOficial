@@ -10,6 +10,7 @@ import { Cron } from '@nestjs/schedule';
 import { SearchUserInput } from './dto/search-user.input';
 import { CalculateDateBrazilNow } from '../../utils/calculate_date_brazil_now'
 import { MediaService } from '../media/media.service';
+import { ProfileService } from '../profile/profile.service';
 
 @Injectable()
 export class UsersService {
@@ -19,12 +20,13 @@ export class UsersService {
     private sms: SmsService,
     private calculateDateBrazilNow: CalculateDateBrazilNow,
     private mediaService: MediaService,
+    private profileService: ProfileService,
   ){}
 
   async create(createUserInput: CreateUserInput): Promise<User>{
 
     const hashedPassord = await bcrypt.hash(createUserInput.password, 10)
-    
+
     const verificationCode = Math.floor(1000 + Math.random() * 9000);
     this.sms.sendSms(createUserInput.smartphone, verificationCode)
 
@@ -32,9 +34,7 @@ export class UsersService {
 
     const birthdate = new Date(createUserInput.birthdate);
 
-    console.log(createUserInput)
-
-    const { address, ...userData} = createUserInput;
+    const { address, profile, ...userData} = createUserInput;
     try {
       const createData: any = {
         ...userData,
@@ -45,18 +45,24 @@ export class UsersService {
         roleId: Number(createUserInput.roleId)
       }
 
-      const newUser = await this.prisma.user.create({
-        data: {
-          ...createData,
-          address: {
-            create: address,
+      const newUser = await this.prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            ...createData,
+            address: {
+              create: address,
+            }
+          },
+          include:{
+            address: true,
+            role: true
           }
-        },
-        include:{
-          address: true,
-          role: true
-        }      
-      })
+        })
+
+        await this.profileService.createForUser(user.id, profile, tx);
+
+        return user;
+      });
       return newUser;
     } catch (error: any) {
       if(error.code === 'P2002'){
