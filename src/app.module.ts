@@ -27,6 +27,7 @@ import { GcpModule } from './modules/gcp/gcp.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
 import { MediaModule } from './modules/media/media.module';
 import { ProfileModule } from './modules/profile/profile.module';
+import { FollowModule } from './modules/follow/follow.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { ProfileModule } from './modules/profile/profile.module';
         MediaModule,
         CommentsModule,
         ProfileModule,
+        FollowModule,
       ],
       introspection: true,
       playground: true
@@ -96,6 +98,7 @@ import { ProfileModule } from './modules/profile/profile.module';
     ReportingModule,
     MediaModule,
     ProfileModule,
+    FollowModule,
   ],
   controllers: [AppController],
   providers: [AppService],
