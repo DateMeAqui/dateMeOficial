@@ -172,7 +172,7 @@ describe('MediaService', () => {
           postId: null,
           commentId: null,
           photoId: null,
-          userAvatarId: null,
+          profileAvatarId: null,
           createdAt: { lt: expect.any(Date) },
         },
         select: { id: true, filename: true },

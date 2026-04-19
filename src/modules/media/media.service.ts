@@ -63,13 +63,13 @@ export class MediaService {
     });
   }
 
-  async attachToUserAvatar(mediaId: string, userId: string): Promise<string> {
+  async attachToProfileAvatar(mediaId: string, profileId: string): Promise<string> {
     const media = await this.prisma.media.findUnique({ where: { id: mediaId } });
     if (!media) throw new ForbiddenException('Media not found.');
     if (media.kind !== 'image') throw new BadRequestException('Avatar must be an image.');
     await this.prisma.media.update({
       where: { id: mediaId },
-      data: { userAvatarId: userId, attachedAt: new Date() },
+      data: { profileAvatarId: profileId, attachedAt: new Date() },
     });
     return media.url;
   }
@@ -137,7 +137,7 @@ export class MediaService {
         postId: null,
         commentId: null,
         photoId: null,
-        userAvatarId: null,
+        profileAvatarId: null,
         createdAt: { lt: oneHourAgo },
       },
       select: { id: true, filename: true },
