@@ -201,7 +201,7 @@ export class UsersService {
       updateData.status = user.status as StatusUser
     }
 
-    const {address, ...userData} = updateData
+    const {address, profile: _profile, ...userData} = updateData
     try{
       const userUpdated =  await this.prisma.user.update({
         where:{ id: userId},
