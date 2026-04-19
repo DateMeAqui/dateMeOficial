@@ -43,4 +43,13 @@ export class ProfileResolver {
   ) {
     return this.profileService.updateByUserId(me.id, input);
   }
+
+  @UseGuards(GqlAuthGuard)
+  @Mutation(() => ProfileDTO, { name: 'updateMyAvatar' })
+  updateMyAvatar(
+    @Args('mediaId') mediaId: string,
+    @CurrentUser() me: { id: string },
+  ) {
+    return this.profileService.updateAvatar(me.id, mediaId);
+  }
 }
