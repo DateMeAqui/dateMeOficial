@@ -5,6 +5,7 @@ import { IsValidCPF } from '../../common/validators/cpf.validator'
 import { Type } from 'class-transformer';
 import { UpdateAddressInput } from 'src/modules/addresses/dto/update-address.input';
 import { RoleEnum } from '../enums/role.enum';
+import { CreateProfileInput } from 'src/modules/profile/dto/create-profile.input';
 
 @InputType()
 export class CreateUserInput {
@@ -57,4 +58,10 @@ export class CreateUserInput {
   @IsNotEmpty({ message: 'Role é obrigatória' })
   @IsEnum(RoleEnum, { message: 'Role deve ser SUPER_ADMIN, ADMIN ou USER' })
   roleId: RoleEnum
+
+  @Field(() => CreateProfileInput)
+  @IsNotEmpty({ message: 'Profile é obrigatório' })
+  @ValidateNested()
+  @Type(() => CreateProfileInput)
+  profile: CreateProfileInput;
 }
