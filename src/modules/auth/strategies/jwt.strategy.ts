@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import { ForbiddenException, forwardRef, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PassportStrategy } from "@nestjs/passport";
 import { ExtractJwt, Strategy } from "passport-jwt";
@@ -59,6 +59,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         if (!user) {
             throw new UnauthorizedException('User not found');
         }
+
+        if (user.status !== 'ACTIVE') {
+            throw new ForbiddenException('Account not active. Please verify your code.');
+        }
+
         const { password, ...userWithoutPassword } = user;
         return userWithoutPassword;
     }

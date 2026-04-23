@@ -47,6 +47,8 @@ scalar DateTime
 type Comment {
   id: String!
   content: String!
+  imageUrl: [String!]!
+  videoUrl: String
   postId: String!
   post: Post!
   parentId: String
@@ -145,6 +147,7 @@ type UserDTO {
   address: AddressDTO
   role: RoleDTO!
   roleId: Int!
+  profile: Profile
 }
 
 type UsersWithPagination {
@@ -179,7 +182,43 @@ type UserWithAgeDTO {
   address: AddressDTO
   role: RoleDTO!
   roleId: Int!
+  profile: Profile
   age: Int!
+}
+
+type Photo {
+  id: ID!
+  url: String!
+  profileId: String!
+  createdAt: DateTime!
+}
+
+type Profile {
+  id: ID!
+  userId: ID!
+  gender: Gender!
+  preferences: [Gender!]!
+  bio: String
+  avatarUrl: String
+  avatarMediaId: String
+  createdAt: DateTime!
+  updatedAt: DateTime
+}
+
+"""
+Gender/orientation values used for profile identification and partner preferences
+"""
+enum Gender {
+  WOMAN
+  TRANS_WOMAN
+  MAN
+  TRANS_MAN
+  COUPLE_HE_SHE
+  COUPLE_HE_HE
+  COUPLE_SHE_SHE
+  GAY
+  LESBIAN
+  TRAVESTI
 }
 
 type AuthResponse {
@@ -260,13 +299,9 @@ type SubscriptionStatusDTO {
 }
 
 type Query {
-  posts: [Post!]!
-  post(id: String!): Post!
-  findAllSubscriptionStatus: [SubscriptionStatusDTO!]!
-  findSubscriptionStatusByName(slug: SubscriptionStatusEnum!): SubscriptionStatus!
-  plans: [PlanDTO!]!
-  findByName(namePlan: CreatePlanNameInput!): PlanDTO!
-  consultOrderById(id: String!): JSON!
+  commentsByPost(postId: ID!): [Comment!]!
+  comment(id: ID!): Comment!
+  myGalleryPhotos: [Photo!]!
   me: UserDTO!
   getUsers: [UserWithAgeDTO!]!
 
@@ -275,6 +310,20 @@ type Query {
   """
   getUsersByPaginationForSearchFullNameOrNickName(pagination: PaginationInput, search: String): UsersWithPagination!
   getUserById(userId: String!): UserWithAgeDTO!
+  myProfile: Profile
+  getProfileByUserId(userId: String!): Profile
+  posts: [Post!]!
+  post(id: String!): Post!
+  findAllSubscriptionStatus: [SubscriptionStatusDTO!]!
+  findSubscriptionStatusByName(slug: SubscriptionStatusEnum!): SubscriptionStatus!
+  plans: [PlanDTO!]!
+  findByName(namePlan: CreatePlanNameInput!): PlanDTO!
+  consultOrderById(id: String!): JSON!
+}
+
+input PaginationInput {
+  page: Int = 1
+  limit: Int = 10
 }
 
 enum SubscriptionStatusEnum {
@@ -301,12 +350,23 @@ The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://
 """
 scalar JSON
 
-input PaginationInput {
-  page: Int = 1
-  limit: Int = 10
-}
-
 type Mutation {
+  createComment(createCommentInput: CreateCommentInput!): Comment!
+  removeComment(id: ID!): Comment!
+  addGalleryPhoto(mediaId: ID!): Photo!
+  removeGalleryPhoto(photoId: ID!): Boolean!
+  login(loginInput: LoginInput!): AuthResponse!
+  logoutUser: Boolean!
+
+  """Cria um user"""
+  CreateUser(createUserInput: CreateUserInput!): UserEntity!
+  updateUser(userId: String, updateDataUser: UpdateUserInput!): UserEntity!
+  verificationCode(code: Float!, userId: String): UserWithAgeDTO!
+  deletedUser(userId: String!): UserEntity!
+  softDeleted(userId: String!): UserEntity!
+  updateMyProfile(input: UpdateProfileInput!): Profile!
+  updateMyAvatar(mediaId: String!): Profile!
+  updateAddressForUser(userId: String!, updateAddressInput: UpdateAddressInput!): Address!
   createComplaint(createComplaintInput: CreateComplaintInput!, userId: String): String!
   createPost(createPostInput: CreatePostInput!): Post!
   createSubscriptionStatus(createSubscriptionStatusInput: CreateSubscriptionStatusInput!): SubscriptionStatusDTO!
@@ -320,16 +380,84 @@ type Mutation {
   """cria e paga um pedido"""
   createAndPaymentOrder(create: CreateOrderInput!): JSON!
   payOrderById(id: String!): JSON!
-  login(loginInput: LoginInput!): AuthResponse!
-  logoutUser: Boolean!
+}
 
-  """Cria um user"""
-  CreateUser(createUserInput: CreateUserInput!): UserEntity!
-  updateUser(userId: String, updateDataUser: UpdateUserInput!): UserEntity!
-  verificationCode(code: Float!, userId: String): UserWithAgeDTO!
-  deletedUser(userId: String!): UserEntity!
-  softDeleted(userId: String!): UserEntity!
-  updateAddressForUser(userId: String!, updateAddressInput: UpdateAddressInput!): Address!
+input CreateCommentInput {
+  postId: ID!
+  content: String!
+  parentId: ID
+  mediaIds: [ID!] = []
+}
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+input CreateUserInput {
+  fullName: String!
+  nickName: String!
+  email: String!
+  password: String!
+  smartphone: String!
+  birthdate: DateTime!
+  cpf: String!
+  status: StatusUser! = PENDING
+  address: UpdateAddressInput
+  roleId: RoleEnum!
+  profile: CreateProfileInput!
+}
+
+enum StatusUser {
+  ACTIVE
+  INACTIVE
+  DELETED
+  BLOCKED
+  PENDING
+}
+
+input UpdateAddressInput {
+  street: String
+  number: Float
+  complement: String
+  district: String
+  city: String
+  state: String
+  cep: String
+  latitude: Float
+  longitude: Float
+}
+
+enum RoleEnum {
+  SUPER_ADMIN
+  ADMIN
+  USER
+}
+
+input CreateProfileInput {
+  gender: Gender!
+  preferences: [Gender!]!
+  bio: String
+}
+
+input UpdateUserInput {
+  fullName: String
+  nickName: String
+  email: String
+  password: String
+  smartphone: String
+  birthdate: DateTime
+  cpf: String
+  status: StatusUser = PENDING
+  address: UpdateAddressInput
+  roleId: RoleEnum
+  profile: CreateProfileInput
+}
+
+input UpdateProfileInput {
+  gender: Gender
+  preferences: [Gender!]
+  bio: String
 }
 
 input CreateComplaintInput {
@@ -341,8 +469,7 @@ input CreateComplaintInput {
 
 input CreatePostInput {
   content: String!
-  imageUrl: [String!]
-  videoUrl: String
+  mediaIds: [ID!] = []
 }
 
 input CreateSubscriptionStatusInput {
@@ -595,61 +722,4 @@ input QrCodes {
 
 input AmountInput {
   value: Int!
-}
-
-input LoginInput {
-  email: String!
-  password: String!
-}
-
-input CreateUserInput {
-  fullName: String!
-  nickName: String!
-  email: String!
-  password: String!
-  smartphone: String!
-  birthdate: DateTime!
-  cpf: String!
-  status: StatusUser! = PENDING
-  address: UpdateAddressInput
-  roleId: RoleEnum!
-}
-
-enum StatusUser {
-  ACTIVE
-  INACTIVE
-  DELETED
-  BLOCKED
-  PENDING
-}
-
-input UpdateAddressInput {
-  street: String
-  number: Float
-  complement: String
-  district: String
-  city: String
-  state: String
-  cep: String
-  latitude: Float
-  longitude: Float
-}
-
-enum RoleEnum {
-  SUPER_ADMIN
-  ADMIN
-  USER
-}
-
-input UpdateUserInput {
-  fullName: String
-  nickName: String
-  email: String
-  password: String
-  smartphone: String
-  birthdate: DateTime
-  cpf: String
-  status: StatusUser = PENDING
-  address: UpdateAddressInput
-  roleId: RoleEnum
 }

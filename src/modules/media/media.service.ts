@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Inject } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { unlink } from 'fs/promises';
 import { PrismaService } from '../prisma/prisma.service';
@@ -21,7 +21,7 @@ export interface ResolvedMediaUrls {
 export class MediaService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly fs: { unlink: (path: string) => Promise<void> } = { unlink },
+    @Inject('FS') private readonly fs: { unlink: (path: string) => Promise<void> },
   ) {}
 
   async recordUpload(input: RecordUploadInput) {

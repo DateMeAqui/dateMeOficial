@@ -65,16 +65,13 @@ export class UsersResolver {
     return this.usersService.updateUser(id, updateDataUser, me);
   }
 
-  @UseGuards(GqlAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'SUPER_ADMIN', 'USER')
-  @Mutation(() => UserWithAge, {name: 'verificationCode'})
+  @Public()
+  @Mutation(() => UserWithAge, { name: 'verificationCode' })
   verificationCode(
     @Args('code') code: number,
-    @Args('userId', {nullable: true}) userId: string,
-    @CurrentUser() me
+    @Args('userId') userId: string,
   ){
-    const id = userId || me.id;
-    return this.usersService.activeStatusWithVerificationCode(id, code)
+    return this.usersService.activeStatusWithVerificationCode(userId, code)
   }
 
   @UseGuards(GqlAuthGuard, RolesGuard)
