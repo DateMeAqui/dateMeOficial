@@ -1,4 +1,6 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
 import { PrismaService } from '../prisma/prisma.service';
@@ -19,13 +21,15 @@ export class UsersService {
     private sms: SmsService,
     private calculateDateBrazilNow: CalculateDateBrazilNow,
     private profileService: ProfileService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ){}
 
   async create(createUserInput: CreateUserInput): Promise<User>{
 
     const hashedPassord = await bcrypt.hash(createUserInput.password, 10)
 
-    const verificationCode = Math.floor(1000 + Math.random() * 9000);
+    const verificationCode = Math.floor(100000 + Math.random() * 900000); // 6 dígitos
+    const verificationCodeExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
     this.sms.sendSms(createUserInput.smartphone, verificationCode)
 
     const brazilDate = this.calculateDateBrazilNow.brazilDate()
@@ -40,6 +44,7 @@ export class UsersService {
         createdAt: brazilDate,
         password: hashedPassord,
         verificationCode: verificationCode,
+        verificationCodeExpiresAt: verificationCodeExpiresAt,
         roleId: Number(createUserInput.roleId)
       }
 
@@ -262,24 +267,42 @@ export class UsersService {
 
   // Validando codigo do usuario e ativando status
   async activeStatusWithVerificationCode(userId: string, verificationCode: number){
-    const user = await this.prisma.user.findUniqueOrThrow({
-      where:{
-        id: userId
-      }
-    });
+    // Rate limiting via Redis: máx 5 tentativas por userId em 15 min
+    const attemptsKey = `verify_attempts:${userId}`;
+    const lockoutKey = `verify_lockout:${userId}`;
 
-    if(user.verificationCode !== verificationCode){
-      throw new Error("Code the verification invalid!");
+    const isLocked = await this.cacheManager.get(lockoutKey);
+    if (isLocked) {
+      throw new ForbiddenException('Too many attempts. Try again in 30 minutes.');
     }
 
-    const updateUser = await this.prisma.user.update({
-      where:{
-        id: userId
-      },
-      data: {status: StatusUser.ACTIVE}
-    })
-    
-    return updateUser;
+    const attempts = ((await this.cacheManager.get<number>(attemptsKey)) ?? 0) + 1;
+    await this.cacheManager.set(attemptsKey, attempts, 15 * 60); // TTL 15 min
+
+    if (attempts > 5) {
+      await this.cacheManager.set(lockoutKey, true, 30 * 60); // lockout 30 min
+      await this.cacheManager.del(attemptsKey);
+      throw new ForbiddenException('Too many attempts. Try again in 30 minutes.');
+    }
+
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+
+    // Verificar expiração do código
+    if (user.verificationCodeExpiresAt && user.verificationCodeExpiresAt < new Date()) {
+      throw new BadRequestException('Verification code has expired. Request a new one.');
+    }
+
+    if (user.verificationCode !== verificationCode) {
+      throw new BadRequestException('Code the verification invalid!');
+    }
+
+    // Código correto: limpar tentativas e ativar
+    await this.cacheManager.del(attemptsKey);
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { status: StatusUser.ACTIVE },
+    });
   }
 
   //Método para calcular a idade

@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ForbiddenException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { UsersService } from './users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -35,6 +36,7 @@ describe('UsersService', () => {
         { provide: SmsService, useValue: { sendSms: jest.fn() } },
         { provide: CalculateDateBrazilNow, useValue: { brazilDate: () => new Date('2026-04-18T12:00:00Z') } },
         { provide: ProfileService, useValue: profileServiceMock },
+        { provide: CACHE_MANAGER, useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() } },
       ],
     }).compile();
 
@@ -145,6 +147,8 @@ const mockDate = { brazilDate: jest.fn().mockReturnValue(new Date()) };
 describe('UsersService — security', () => {
   let service: UsersService;
 
+  const mockCache = { get: jest.fn(), set: jest.fn(), del: jest.fn() };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -153,6 +157,7 @@ describe('UsersService — security', () => {
         { provide: SmsService, useValue: mockSms },
         { provide: ProfileService, useValue: mockProfile },
         { provide: CalculateDateBrazilNow, useValue: mockDate },
+        { provide: CACHE_MANAGER, useValue: mockCache },
       ],
     }).compile();
     service = module.get<UsersService>(UsersService);
