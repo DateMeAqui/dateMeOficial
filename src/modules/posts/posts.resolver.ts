@@ -21,11 +21,13 @@ export class PostsResolver {
     return this.postsService.create(createPostInput);
   }
 
+  @UseGuards(GqlAuthGuard)
   @Query(() => [Post], { name: 'posts' })
   findAll() {
     return this.postsService.findAll();
   }
 
+  @UseGuards(GqlAuthGuard)
   @Query(() => Post, { name: 'post' })
   findOne(@Args('id', { type: () => String }) id: string) {
     return this.postsService.findOne(id);
