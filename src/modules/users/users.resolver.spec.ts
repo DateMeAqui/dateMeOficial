@@ -1,12 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { UsersResolver } from './users.resolver';
 import { UsersService } from './users.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { SmsService } from '../sms/sms.service';
+import { CalculateDateBrazilNow } from '../../utils/calculate_date_brazil_now';
+import { ProfileService } from '../profile/profile.service';
 
 describe('UsersResolver', () => {
   let resolver: UsersResolver;
   let usersService: UsersService;
-  let prismaMock: jest.Mocked<PrismaService> 
+  let prismaMock: jest.Mocked<PrismaService>
 
   beforeEach(async () => {
     prismaMock = {
@@ -19,7 +23,11 @@ describe('UsersResolver', () => {
       providers: [
         UsersResolver,
         UsersService,
-        {provide: PrismaService, useValue: prismaMock},
+        { provide: PrismaService, useValue: prismaMock },
+        { provide: SmsService, useValue: { sendSms: jest.fn() } },
+        { provide: CalculateDateBrazilNow, useValue: { brazilDate: () => new Date() } },
+        { provide: ProfileService, useValue: { createForUser: jest.fn() } },
+        { provide: CACHE_MANAGER, useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() } },
       ]
     }).compile();
 

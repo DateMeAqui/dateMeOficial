@@ -19,11 +19,13 @@ export class CommentsResolver {
     return this.commentsService.create(me.id, input);
   }
 
+  @UseGuards(GqlAuthGuard)
   @Query(() => [Comment], { name: 'commentsByPost' })
   findByPost(@Args('postId', { type: () => ID }) postId: string) {
     return this.commentsService.findByPost(postId);
   }
 
+  @UseGuards(GqlAuthGuard)
   @Query(() => Comment, { name: 'comment' })
   findOne(@Args('id', { type: () => ID }) id: string) {
     return this.commentsService.findOne(id);

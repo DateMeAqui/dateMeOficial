@@ -20,7 +20,7 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "types": ["node", "graphql-upload"],
+    "types": ["node", "graphql-upload", "jest"],
     "typeRoots": ["./node_modules/@types", "./src/@types"],
     "noFallthroughCasesInSwitch": false
   }

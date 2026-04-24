@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
 import { PrismaService } from '../prisma/prisma.service';
@@ -10,6 +12,8 @@ import { Cron } from '@nestjs/schedule';
 import { SearchUserInput } from './dto/search-user.input';
 import { CalculateDateBrazilNow } from '../../utils/calculate_date_brazil_now'
 import { ProfileService } from '../profile/profile.service';
+import { REDIS_CLIENT } from './users.module';
+import type Redis from 'ioredis';
 
 @Injectable()
 export class UsersService {
@@ -19,13 +23,16 @@ export class UsersService {
     private sms: SmsService,
     private calculateDateBrazilNow: CalculateDateBrazilNow,
     private profileService: ProfileService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ){}
 
   async create(createUserInput: CreateUserInput): Promise<User>{
 
     const hashedPassord = await bcrypt.hash(createUserInput.password, 10)
 
-    const verificationCode = Math.floor(1000 + Math.random() * 9000);
+    const verificationCode = Math.floor(100000 + Math.random() * 900000); // 6 dígitos
+    const verificationCodeExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
     this.sms.sendSms(createUserInput.smartphone, verificationCode)
 
     const brazilDate = this.calculateDateBrazilNow.brazilDate()
@@ -40,6 +47,7 @@ export class UsersService {
         createdAt: brazilDate,
         password: hashedPassord,
         verificationCode: verificationCode,
+        verificationCodeExpiresAt: verificationCodeExpiresAt,
         roleId: Number(createUserInput.roleId)
       }
 
@@ -182,50 +190,48 @@ export class UsersService {
   }
 
   async updateUser(userId: string, updateData: UpdateUserInput, me: any){
-    console.log(`Attempting to update user with ID: ${userId}`);
-
     const user = await this.prisma.user.findUniqueOrThrow({
-      where:{
-        id: userId
-      },
-      include:{
-        address: true
-      }
-    })
+      where: { id: userId },
+      include: { address: true },
+    });
 
-    if (user.id !== me.id && me.roleId === 1) {
-      throw new Error("You do not have permission to update user!")
+    const isAdmin = me.roleId === 1 || me.roleId === 2; // SUPER_ADMIN ou ADMIN
+
+    if (user.id !== me.id && !isAdmin) {
+      throw new ForbiddenException('You do not have permission to update this user');
     }
 
-    if(updateData.password){
+    // Impede escalada de role por usuários não-admin (CRIT-02)
+    if (!isAdmin && updateData.roleId !== undefined) {
+      delete updateData.roleId;
+    }
+
+    if (updateData.password) {
       updateData.password = await bcrypt.hash(updateData.password, 10);
     }
 
-    if (updateData.status === 'PENDING' && user.status !== "PENDING"){
-      updateData.status = user.status as StatusUser
+    if (updateData.status === 'PENDING' && user.status !== 'PENDING') {
+      updateData.status = user.status as StatusUser;
     }
 
-    const {address, profile: _profile, ...userData} = updateData
-    try{
-      const userUpdated =  await this.prisma.user.update({
-        where:{ id: userId},
+    const { address, profile: _profile, ...userData } = updateData;
+    try {
+      const userUpdated = await this.prisma.user.update({
+        where: { id: userId },
         data: userData,
-        include:{
-          address: true
-        }
+        include: { address: true },
       });
 
-      if(address){
+      if (address) {
         await this.prisma.address.update({
-          where:{ id: user.address?.id},
-          data:address
-        })
+          where: { id: user.address?.id },
+          data: address,
+        });
       }
 
       return userUpdated;
-
-    }catch(error){
-      throw new Error(`Failed to update user role ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to update user: ${error.message}`);
     }
   }
 
@@ -242,58 +248,68 @@ export class UsersService {
   }
 
   async softDelete(userId: string, me: any): Promise<User | null> {
+    const user = await this.prisma.user.findFirstOrThrow({ where: { id: userId } });
 
-    const user = await this.prisma.user.findFirstOrThrow({
-      where:{
-        id: userId
-      }
-    });
-
-    if (user.id !== me.id && me.roleId === 3) {
-      throw new Error("You do not have permission to update user!")
+    const isAdmin = me.roleId === 1 || me.roleId === 2;
+    if (user.id !== me.id && !isAdmin) {
+      throw new ForbiddenException('You do not have permission to delete this user');
     }
 
     const now = new Date();
     const brazilDate = new Date(now.getTime() - 3 * 60 * 60 * 1000);
 
-    if(user.deletedAt === null){
+    if (user.deletedAt === null) {
       return this.prisma.user.update({
-        where:{
-          id:userId
-        },
-        data:{
-          deletedAt: brazilDate,
-          status: StatusUser.INACTIVE,
-        },
-        include: {
-          address: true,
-          role: true
-        }
-      })
+        where: { id: userId },
+        data: { deletedAt: brazilDate, status: StatusUser.INACTIVE },
+        include: { address: true, role: true },
+      });
     }
     return null;
   }
 
   // Validando codigo do usuario e ativando status
   async activeStatusWithVerificationCode(userId: string, verificationCode: number){
-    const user = await this.prisma.user.findUniqueOrThrow({
-      where:{
-        id: userId
-      }
-    });
+    // Rate limiting via Redis: máx 5 tentativas por userId em 15 min
+    const attemptsKey = `verify_attempts:${userId}`;
+    const lockoutKey = `verify_lockout:${userId}`;
 
-    if(user.verificationCode !== verificationCode){
-      throw new Error("Code the verification invalid!");
+    const isLocked = await this.cacheManager.get(lockoutKey);
+    if (isLocked) {
+      throw new ForbiddenException('Too many attempts. Try again in 30 minutes.');
     }
 
-    const updateUser = await this.prisma.user.update({
-      where:{
-        id: userId
-      },
-      data: {status: StatusUser.ACTIVE}
-    })
-    
-    return updateUser;
+    // Atomic INCR via ioredis — evita race condition de GET+SET concorrente (CRIT-05)
+    const attempts = await this.redis.incr(attemptsKey);
+    if (attempts === 1) {
+      // TTL definido apenas na primeira tentativa → janela fixa de 15 min
+      await this.redis.expire(attemptsKey, 15 * 60);
+    }
+
+    if (attempts > 5) {
+      await this.cacheManager.set(lockoutKey, true, 30 * 60); // lockout 30 min
+      await this.redis.del(attemptsKey);
+      throw new ForbiddenException('Too many attempts. Try again in 30 minutes.');
+    }
+
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+
+    // Verificar expiração do código
+    if (user.verificationCodeExpiresAt && user.verificationCodeExpiresAt < new Date()) {
+      throw new BadRequestException('Verification code has expired. Request a new one.');
+    }
+
+    if (user.verificationCode !== verificationCode) {
+      throw new BadRequestException('Code the verification invalid!');
+    }
+
+    // Código correto: limpar tentativas e ativar
+    await this.redis.del(attemptsKey);
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { status: StatusUser.ACTIVE },
+    });
   }
 
   //Método para calcular a idade

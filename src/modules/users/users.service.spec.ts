@@ -1,10 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { UsersService } from './users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { SmsService } from '../sms/sms.service';
 import { CalculateDateBrazilNow } from '../../utils/calculate_date_brazil_now';
 import { ProfileService } from '../profile/profile.service';
+import { REDIS_CLIENT } from './users.module';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -34,6 +37,8 @@ describe('UsersService', () => {
         { provide: SmsService, useValue: { sendSms: jest.fn() } },
         { provide: CalculateDateBrazilNow, useValue: { brazilDate: () => new Date('2026-04-18T12:00:00Z') } },
         { provide: ProfileService, useValue: profileServiceMock },
+        { provide: CACHE_MANAGER, useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() } },
+        { provide: REDIS_CLIENT, useValue: { incr: jest.fn().mockResolvedValue(1), expire: jest.fn().mockResolvedValue(1), del: jest.fn().mockResolvedValue(1) } },
       ],
     }).compile();
 
@@ -124,6 +129,161 @@ describe('UsersService', () => {
 
       await expect(service.create(baseInput as any)).rejects.toThrow('Erro ao criar usuário');
       expect(profileServiceMock.createForUser).toHaveBeenCalledTimes(1);
+    });
+  });
+});
+
+const mockPrisma = {
+  user: {
+    findUniqueOrThrow: jest.fn(),
+    update: jest.fn(),
+    findFirstOrThrow: jest.fn(),
+  },
+  address: { update: jest.fn() },
+};
+
+const mockSms = { sendSms: jest.fn() };
+const mockProfile = { createForUser: jest.fn() };
+const mockDate = { brazilDate: jest.fn().mockReturnValue(new Date()) };
+
+const mockCacheManager = { get: jest.fn(), set: jest.fn(), del: jest.fn() };
+const mockRedis = { incr: jest.fn(), expire: jest.fn(), del: jest.fn() };
+
+describe('UsersService — security', () => {
+  let service: UsersService;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        UsersService,
+        { provide: PrismaService, useValue: mockPrisma },
+        { provide: SmsService, useValue: mockSms },
+        { provide: ProfileService, useValue: mockProfile },
+        { provide: CalculateDateBrazilNow, useValue: mockDate },
+        { provide: CACHE_MANAGER, useValue: mockCacheManager },
+        { provide: REDIS_CLIENT, useValue: mockRedis },
+      ],
+    }).compile();
+    service = module.get<UsersService>(UsersService);
+    jest.clearAllMocks();
+  });
+
+  describe('updateUser — IDOR (CRIT-01)', () => {
+    it('USER não pode atualizar outro usuário', async () => {
+      mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+        id: 'other-user-id',
+        address: null,
+        status: 'ACTIVE',
+      });
+      const me = { id: 'my-id', roleId: 3 }; // USER
+      await expect(
+        service.updateUser('other-user-id', { fullName: 'Hack' } as any, me),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('USER pode atualizar a si mesmo', async () => {
+      mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+        id: 'my-id',
+        address: null,
+        status: 'ACTIVE',
+      });
+      mockPrisma.user.update.mockResolvedValue({ id: 'my-id', fullName: 'Novo Nome' });
+      const me = { id: 'my-id', roleId: 3 };
+      await expect(
+        service.updateUser('my-id', { fullName: 'Novo Nome' } as any, me),
+      ).resolves.toBeDefined();
+    });
+
+    it('ADMIN pode atualizar qualquer usuário', async () => {
+      mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+        id: 'other-id',
+        address: null,
+        status: 'ACTIVE',
+      });
+      mockPrisma.user.update.mockResolvedValue({ id: 'other-id' });
+      const me = { id: 'admin-id', roleId: 2 }; // ADMIN
+      await expect(
+        service.updateUser('other-id', { fullName: 'Ok' } as any, me),
+      ).resolves.toBeDefined();
+    });
+  });
+
+  describe('updateUser — roleId escalation (CRIT-02)', () => {
+    it('USER não pode escalar o próprio roleId', async () => {
+      mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+        id: 'my-id',
+        address: null,
+        status: 'ACTIVE',
+      });
+      mockPrisma.user.update.mockResolvedValue({ id: 'my-id', roleId: 3 });
+      const me = { id: 'my-id', roleId: 3 };
+      await service.updateUser('my-id', { roleId: 1 as any } as any, me);
+      // roleId não deve ter sido passado ao update
+      const updateCall = mockPrisma.user.update.mock.calls[0][0];
+      expect(updateCall.data.roleId).toBeUndefined();
+    });
+  });
+
+  describe('activeStatusWithVerificationCode — CRIT-05', () => {
+    it('lança ForbiddenException quando usuário está em lockout', async () => {
+      mockCacheManager.get.mockImplementation((key: string) => {
+        if (key.startsWith('verify_lockout:')) return Promise.resolve(true);
+        return Promise.resolve(null);
+      });
+      await expect(
+        service.activeStatusWithVerificationCode('user-id', 123456),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('lança BadRequestException quando código expirou', async () => {
+      mockCacheManager.get.mockResolvedValue(null); // sem lockout
+      mockCacheManager.set.mockResolvedValue(undefined);
+      mockRedis.incr.mockResolvedValue(1);
+      mockRedis.expire.mockResolvedValue(1);
+      const expiredDate = new Date(Date.now() - 1000); // 1 segundo no passado
+      mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+        id: 'user-id',
+        verificationCode: 123456,
+        verificationCodeExpiresAt: expiredDate,
+      });
+      await expect(
+        service.activeStatusWithVerificationCode('user-id', 123456),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('lança BadRequestException para código inválido', async () => {
+      mockCacheManager.get.mockResolvedValue(null);
+      mockCacheManager.set.mockResolvedValue(undefined);
+      mockRedis.incr.mockResolvedValue(1);
+      mockRedis.expire.mockResolvedValue(1);
+      const futureDate = new Date(Date.now() + 10 * 60 * 1000);
+      mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+        id: 'user-id',
+        verificationCode: 123456,
+        verificationCodeExpiresAt: futureDate,
+      });
+      await expect(
+        service.activeStatusWithVerificationCode('user-id', 999999),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('ativa usuário com código válido e limpa tentativas', async () => {
+      mockCacheManager.get.mockResolvedValue(null);
+      mockCacheManager.set.mockResolvedValue(undefined);
+      mockRedis.incr.mockResolvedValue(1);
+      mockRedis.expire.mockResolvedValue(1);
+      mockRedis.del.mockResolvedValue(1);
+      const futureDate = new Date(Date.now() + 10 * 60 * 1000);
+      mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+        id: 'user-id',
+        verificationCode: 123456,
+        verificationCodeExpiresAt: futureDate,
+      });
+      mockPrisma.user.update.mockResolvedValue({ id: 'user-id', status: 'ACTIVE' });
+      await expect(
+        service.activeStatusWithVerificationCode('user-id', 123456),
+      ).resolves.toMatchObject({ status: 'ACTIVE' });
+      expect(mockRedis.del).toHaveBeenCalledWith('verify_attempts:user-id');
     });
   });
 });
