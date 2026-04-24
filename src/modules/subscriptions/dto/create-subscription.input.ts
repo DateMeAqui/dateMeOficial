@@ -15,9 +15,10 @@ export class CreateSubscriptionInput {
     @IsDate()
     endDate?: Date;
 
-    @Field(() => String)
+    @Field(() => String, { nullable: true })
+    @IsOptional()
     @IsString()
-    userId: string;
+    userId?: string;
   
     @Field(() => String)
     @IsString()

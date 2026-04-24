@@ -1,17 +1,23 @@
-import { Resolver, Query, Mutation, Args, Int } from '@nestjs/graphql';
+import { Resolver, Mutation, Args } from '@nestjs/graphql';
+import { UseGuards } from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
 import { Subscription } from './entities/subscription.entity';
 import { CreateSubscriptionInput } from './dto/create-subscription.input';
-import { UpdateSubscriptionInput } from './dto/update-subscription.input';
-import GraphQLJSON from 'graphql-type-json';
+import { GqlAuthGuard } from '../auth/guards/qgl-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Resolver(() => Subscription)
 export class SubscriptionsResolver {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
 
+  @UseGuards(GqlAuthGuard)
   @Mutation(() => Subscription)
-  createSubscription(@Args('createSubscriptionInput') createSubscriptionInput: CreateSubscriptionInput) {
-    return this.subscriptionsService.create(createSubscriptionInput);
+  createSubscription(
+    @CurrentUser() me: { id: string },
+    @Args('createSubscriptionInput') input: CreateSubscriptionInput,
+  ) {
+    input.userId = me.id; // nunca aceitar userId externo
+    return this.subscriptionsService.create(input);
   }
 
 

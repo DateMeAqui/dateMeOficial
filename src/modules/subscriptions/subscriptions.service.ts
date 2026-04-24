@@ -14,7 +14,7 @@ export class SubscriptionsService {
 
   async create(createSubscriptionInput: CreateSubscriptionInput) {
 
-    this.checkingValiableCreateNewSubscription(createSubscriptionInput.userId)
+    this.checkingValiableCreateNewSubscription(createSubscriptionInput.userId!)
 
     if(!createSubscriptionInput.interval){
       throw new BadRequestException('The "interval" field is required!')
@@ -35,7 +35,7 @@ export class SubscriptionsService {
       data:{
         startDate,
         endDate,
-        userId: createSubscriptionInput.userId,
+        userId: createSubscriptionInput.userId!,
         planId: createSubscriptionInput.planId,
         statusId: createSubscriptionInput.statusId,
         isActive: true,
