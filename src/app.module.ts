@@ -75,8 +75,8 @@ import { FollowModule } from './modules/follow/follow.module';
         ProfileModule,
         FollowModule,
       ],
-      introspection: true,
-      playground: true
+      introspection: process.env.ENV !== 'production',
+      playground: process.env.ENV !== 'production',
     }),
     UsersModule,
     PrismaModule,
