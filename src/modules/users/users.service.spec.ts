@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { UsersService } from './users.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,6 +7,7 @@ import { Prisma } from '@prisma/client';
 import { SmsService } from '../sms/sms.service';
 import { CalculateDateBrazilNow } from '../../utils/calculate_date_brazil_now';
 import { ProfileService } from '../profile/profile.service';
+import { REDIS_CLIENT } from './users.module';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -37,6 +38,7 @@ describe('UsersService', () => {
         { provide: CalculateDateBrazilNow, useValue: { brazilDate: () => new Date('2026-04-18T12:00:00Z') } },
         { provide: ProfileService, useValue: profileServiceMock },
         { provide: CACHE_MANAGER, useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() } },
+        { provide: REDIS_CLIENT, useValue: { incr: jest.fn().mockResolvedValue(1), expire: jest.fn().mockResolvedValue(1), del: jest.fn().mockResolvedValue(1) } },
       ],
     }).compile();
 
@@ -144,10 +146,11 @@ const mockSms = { sendSms: jest.fn() };
 const mockProfile = { createForUser: jest.fn() };
 const mockDate = { brazilDate: jest.fn().mockReturnValue(new Date()) };
 
+const mockCacheManager = { get: jest.fn(), set: jest.fn(), del: jest.fn() };
+const mockRedis = { incr: jest.fn(), expire: jest.fn(), del: jest.fn() };
+
 describe('UsersService — security', () => {
   let service: UsersService;
-
-  const mockCache = { get: jest.fn(), set: jest.fn(), del: jest.fn() };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -157,7 +160,8 @@ describe('UsersService — security', () => {
         { provide: SmsService, useValue: mockSms },
         { provide: ProfileService, useValue: mockProfile },
         { provide: CalculateDateBrazilNow, useValue: mockDate },
-        { provide: CACHE_MANAGER, useValue: mockCache },
+        { provide: CACHE_MANAGER, useValue: mockCacheManager },
+        { provide: REDIS_CLIENT, useValue: mockRedis },
       ],
     }).compile();
     service = module.get<UsersService>(UsersService);
@@ -217,6 +221,69 @@ describe('UsersService — security', () => {
       // roleId não deve ter sido passado ao update
       const updateCall = mockPrisma.user.update.mock.calls[0][0];
       expect(updateCall.data.roleId).toBeUndefined();
+    });
+  });
+
+  describe('activeStatusWithVerificationCode — CRIT-05', () => {
+    it('lança ForbiddenException quando usuário está em lockout', async () => {
+      mockCacheManager.get.mockImplementation((key: string) => {
+        if (key.startsWith('verify_lockout:')) return Promise.resolve(true);
+        return Promise.resolve(null);
+      });
+      await expect(
+        service.activeStatusWithVerificationCode('user-id', 123456),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('lança BadRequestException quando código expirou', async () => {
+      mockCacheManager.get.mockResolvedValue(null); // sem lockout
+      mockCacheManager.set.mockResolvedValue(undefined);
+      mockRedis.incr.mockResolvedValue(1);
+      mockRedis.expire.mockResolvedValue(1);
+      const expiredDate = new Date(Date.now() - 1000); // 1 segundo no passado
+      mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+        id: 'user-id',
+        verificationCode: 123456,
+        verificationCodeExpiresAt: expiredDate,
+      });
+      await expect(
+        service.activeStatusWithVerificationCode('user-id', 123456),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('lança BadRequestException para código inválido', async () => {
+      mockCacheManager.get.mockResolvedValue(null);
+      mockCacheManager.set.mockResolvedValue(undefined);
+      mockRedis.incr.mockResolvedValue(1);
+      mockRedis.expire.mockResolvedValue(1);
+      const futureDate = new Date(Date.now() + 10 * 60 * 1000);
+      mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+        id: 'user-id',
+        verificationCode: 123456,
+        verificationCodeExpiresAt: futureDate,
+      });
+      await expect(
+        service.activeStatusWithVerificationCode('user-id', 999999),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('ativa usuário com código válido e limpa tentativas', async () => {
+      mockCacheManager.get.mockResolvedValue(null);
+      mockCacheManager.set.mockResolvedValue(undefined);
+      mockRedis.incr.mockResolvedValue(1);
+      mockRedis.expire.mockResolvedValue(1);
+      mockRedis.del.mockResolvedValue(1);
+      const futureDate = new Date(Date.now() + 10 * 60 * 1000);
+      mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+        id: 'user-id',
+        verificationCode: 123456,
+        verificationCodeExpiresAt: futureDate,
+      });
+      mockPrisma.user.update.mockResolvedValue({ id: 'user-id', status: 'ACTIVE' });
+      await expect(
+        service.activeStatusWithVerificationCode('user-id', 123456),
+      ).resolves.toMatchObject({ status: 'ACTIVE' });
+      expect(mockRedis.del).toHaveBeenCalledWith('verify_attempts:user-id');
     });
   });
 });

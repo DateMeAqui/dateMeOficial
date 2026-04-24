@@ -12,6 +12,8 @@ import { Cron } from '@nestjs/schedule';
 import { SearchUserInput } from './dto/search-user.input';
 import { CalculateDateBrazilNow } from '../../utils/calculate_date_brazil_now'
 import { ProfileService } from '../profile/profile.service';
+import { REDIS_CLIENT } from './users.module';
+import type Redis from 'ioredis';
 
 @Injectable()
 export class UsersService {
@@ -22,6 +24,7 @@ export class UsersService {
     private calculateDateBrazilNow: CalculateDateBrazilNow,
     private profileService: ProfileService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ){}
 
   async create(createUserInput: CreateUserInput): Promise<User>{
@@ -276,12 +279,16 @@ export class UsersService {
       throw new ForbiddenException('Too many attempts. Try again in 30 minutes.');
     }
 
-    const attempts = ((await this.cacheManager.get<number>(attemptsKey)) ?? 0) + 1;
-    await this.cacheManager.set(attemptsKey, attempts, 15 * 60); // TTL 15 min
+    // Atomic INCR via ioredis — evita race condition de GET+SET concorrente (CRIT-05)
+    const attempts = await this.redis.incr(attemptsKey);
+    if (attempts === 1) {
+      // TTL definido apenas na primeira tentativa → janela fixa de 15 min
+      await this.redis.expire(attemptsKey, 15 * 60);
+    }
 
     if (attempts > 5) {
       await this.cacheManager.set(lockoutKey, true, 30 * 60); // lockout 30 min
-      await this.cacheManager.del(attemptsKey);
+      await this.redis.del(attemptsKey);
       throw new ForbiddenException('Too many attempts. Try again in 30 minutes.');
     }
 
@@ -297,7 +304,7 @@ export class UsersService {
     }
 
     // Código correto: limpar tentativas e ativar
-    await this.cacheManager.del(attemptsKey);
+    await this.redis.del(attemptsKey);
 
     return this.prisma.user.update({
       where: { id: userId },
