@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
 import { PrismaService } from '../prisma/prisma.service';
@@ -182,50 +182,48 @@ export class UsersService {
   }
 
   async updateUser(userId: string, updateData: UpdateUserInput, me: any){
-    console.log(`Attempting to update user with ID: ${userId}`);
-
     const user = await this.prisma.user.findUniqueOrThrow({
-      where:{
-        id: userId
-      },
-      include:{
-        address: true
-      }
-    })
+      where: { id: userId },
+      include: { address: true },
+    });
 
-    if (user.id !== me.id && me.roleId === 1) {
-      throw new Error("You do not have permission to update user!")
+    const isAdmin = me.roleId === 1 || me.roleId === 2; // SUPER_ADMIN ou ADMIN
+
+    if (user.id !== me.id && !isAdmin) {
+      throw new ForbiddenException('You do not have permission to update this user');
     }
 
-    if(updateData.password){
+    // Impede escalada de role por usuários não-admin (CRIT-02)
+    if (!isAdmin && updateData.roleId !== undefined) {
+      delete updateData.roleId;
+    }
+
+    if (updateData.password) {
       updateData.password = await bcrypt.hash(updateData.password, 10);
     }
 
-    if (updateData.status === 'PENDING' && user.status !== "PENDING"){
-      updateData.status = user.status as StatusUser
+    if (updateData.status === 'PENDING' && user.status !== 'PENDING') {
+      updateData.status = user.status as StatusUser;
     }
 
-    const {address, profile: _profile, ...userData} = updateData
-    try{
-      const userUpdated =  await this.prisma.user.update({
-        where:{ id: userId},
+    const { address, profile: _profile, ...userData } = updateData;
+    try {
+      const userUpdated = await this.prisma.user.update({
+        where: { id: userId },
         data: userData,
-        include:{
-          address: true
-        }
+        include: { address: true },
       });
 
-      if(address){
+      if (address) {
         await this.prisma.address.update({
-          where:{ id: user.address?.id},
-          data:address
-        })
+          where: { id: user.address?.id },
+          data: address,
+        });
       }
 
       return userUpdated;
-
-    }catch(error){
-      throw new Error(`Failed to update user role ${error.message}`);
+    } catch (error) {
+      throw new Error(`Failed to update user: ${error.message}`);
     }
   }
 
@@ -242,34 +240,22 @@ export class UsersService {
   }
 
   async softDelete(userId: string, me: any): Promise<User | null> {
+    const user = await this.prisma.user.findFirstOrThrow({ where: { id: userId } });
 
-    const user = await this.prisma.user.findFirstOrThrow({
-      where:{
-        id: userId
-      }
-    });
-
-    if (user.id !== me.id && me.roleId === 3) {
-      throw new Error("You do not have permission to update user!")
+    const isAdmin = me.roleId === 1 || me.roleId === 2;
+    if (user.id !== me.id && !isAdmin) {
+      throw new ForbiddenException('You do not have permission to delete this user');
     }
 
     const now = new Date();
     const brazilDate = new Date(now.getTime() - 3 * 60 * 60 * 1000);
 
-    if(user.deletedAt === null){
+    if (user.deletedAt === null) {
       return this.prisma.user.update({
-        where:{
-          id:userId
-        },
-        data:{
-          deletedAt: brazilDate,
-          status: StatusUser.INACTIVE,
-        },
-        include: {
-          address: true,
-          role: true
-        }
-      })
+        where: { id: userId },
+        data: { deletedAt: brazilDate, status: StatusUser.INACTIVE },
+        include: { address: true, role: true },
+      });
     }
     return null;
   }

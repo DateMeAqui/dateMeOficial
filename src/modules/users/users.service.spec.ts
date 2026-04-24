@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ForbiddenException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -124,6 +125,93 @@ describe('UsersService', () => {
 
       await expect(service.create(baseInput as any)).rejects.toThrow('Erro ao criar usuário');
       expect(profileServiceMock.createForUser).toHaveBeenCalledTimes(1);
+    });
+  });
+});
+
+const mockPrisma = {
+  user: {
+    findUniqueOrThrow: jest.fn(),
+    update: jest.fn(),
+    findFirstOrThrow: jest.fn(),
+  },
+  address: { update: jest.fn() },
+};
+
+const mockSms = { sendSms: jest.fn() };
+const mockProfile = { createForUser: jest.fn() };
+const mockDate = { brazilDate: jest.fn().mockReturnValue(new Date()) };
+
+describe('UsersService — security', () => {
+  let service: UsersService;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        UsersService,
+        { provide: PrismaService, useValue: mockPrisma },
+        { provide: SmsService, useValue: mockSms },
+        { provide: ProfileService, useValue: mockProfile },
+        { provide: CalculateDateBrazilNow, useValue: mockDate },
+      ],
+    }).compile();
+    service = module.get<UsersService>(UsersService);
+    jest.clearAllMocks();
+  });
+
+  describe('updateUser — IDOR (CRIT-01)', () => {
+    it('USER não pode atualizar outro usuário', async () => {
+      mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+        id: 'other-user-id',
+        address: null,
+        status: 'ACTIVE',
+      });
+      const me = { id: 'my-id', roleId: 3 }; // USER
+      await expect(
+        service.updateUser('other-user-id', { fullName: 'Hack' } as any, me),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('USER pode atualizar a si mesmo', async () => {
+      mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+        id: 'my-id',
+        address: null,
+        status: 'ACTIVE',
+      });
+      mockPrisma.user.update.mockResolvedValue({ id: 'my-id', fullName: 'Novo Nome' });
+      const me = { id: 'my-id', roleId: 3 };
+      await expect(
+        service.updateUser('my-id', { fullName: 'Novo Nome' } as any, me),
+      ).resolves.toBeDefined();
+    });
+
+    it('ADMIN pode atualizar qualquer usuário', async () => {
+      mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+        id: 'other-id',
+        address: null,
+        status: 'ACTIVE',
+      });
+      mockPrisma.user.update.mockResolvedValue({ id: 'other-id' });
+      const me = { id: 'admin-id', roleId: 2 }; // ADMIN
+      await expect(
+        service.updateUser('other-id', { fullName: 'Ok' } as any, me),
+      ).resolves.toBeDefined();
+    });
+  });
+
+  describe('updateUser — roleId escalation (CRIT-02)', () => {
+    it('USER não pode escalar o próprio roleId', async () => {
+      mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+        id: 'my-id',
+        address: null,
+        status: 'ACTIVE',
+      });
+      mockPrisma.user.update.mockResolvedValue({ id: 'my-id', roleId: 3 });
+      const me = { id: 'my-id', roleId: 3 };
+      await service.updateUser('my-id', { roleId: 1 as any } as any, me);
+      // roleId não deve ter sido passado ao update
+      const updateCall = mockPrisma.user.update.mock.calls[0][0];
+      expect(updateCall.data.roleId).toBeUndefined();
     });
   });
 });
