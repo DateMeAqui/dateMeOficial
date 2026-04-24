@@ -1,9 +1,7 @@
-import { BadRequestException, HttpException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateSubscriptionInput } from './dto/create-subscription.input';
-import { UpdateSubscriptionInput } from './dto/update-subscription.input';
 import { PrismaService } from '../prisma/prisma.service';
 import { CalculateDateBrazilNow } from 'src/utils/calculate_date_brazil_now';
-import { ExceptionsHandler } from '@nestjs/core/exceptions/exceptions-handler';
 
 @Injectable()
 export class SubscriptionsService {
@@ -13,8 +11,11 @@ export class SubscriptionsService {
   ){}
 
   async create(createSubscriptionInput: CreateSubscriptionInput) {
+    if (!createSubscriptionInput.userId) {
+      throw new BadRequestException('userId is required');
+    }
 
-    this.checkingValiableCreateNewSubscription(createSubscriptionInput.userId!)
+    this.checkingValiableCreateNewSubscription(createSubscriptionInput.userId)
 
     if(!createSubscriptionInput.interval){
       throw new BadRequestException('The "interval" field is required!')
@@ -35,7 +36,7 @@ export class SubscriptionsService {
       data:{
         startDate,
         endDate,
-        userId: createSubscriptionInput.userId!,
+        userId: createSubscriptionInput.userId,
         planId: createSubscriptionInput.planId,
         statusId: createSubscriptionInput.statusId,
         isActive: true,
