@@ -146,6 +146,17 @@ export class UsersService {
     return this.toUserWithAge(user)
   }
 
+  async findUserByEmail(email: string) {
+    try {
+      return await this.prisma.user.findUniqueOrThrow({
+        where: { email },
+        include: { address: true, role: true },
+      });
+    } catch {
+      return null; // não vazar detalhes do Prisma
+    }
+  }
+
   async searchByFilter(searchInput: SearchUserInput): Promise<UsersWithPagination | null>{
 
     const { 
