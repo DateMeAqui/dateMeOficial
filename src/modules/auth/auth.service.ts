@@ -6,7 +6,6 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { LoginInput } from './dto/login.input';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
-import { ExceptionsHandler } from '@nestjs/core/exceptions/exceptions-handler';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -19,25 +18,23 @@ export class AuthService {
   ){}
 
   async validateUser(email: string, password: string): Promise<any> {
-    const user = await this.usersService['prisma'].user.findUniqueOrThrow({
-      where: { email },
-      include: { 
-        address: true,
-        role: true
-      }
-    })
+    const user = await this.usersService.findUserByEmail(email);
 
-    if( user && await bcrypt.compare(password, user.password)) {
-      await this.usersService['prisma'].user.update({ 
-        where:{ id: user.id},
-        data:{
-          lastLogin: new Date() 
-        }
-      });
-      const { password, ...result } = user;
-      return result
-    }
-    return null;
+    if (!user) return null;
+
+    // Bloqueia status não-ACTIVE sem revelar se o email existe (evita user enumeration)
+    if (user.status !== 'ACTIVE') return null;
+
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) return null;
+
+    await this.usersService['prisma'].user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() },
+    });
+
+    const { password: _pwd, ...result } = user;
+    return result;
   }
 
   async login( loginInput: LoginInput ) {
@@ -88,13 +85,11 @@ export class AuthService {
 
       //gera novo access token
       const newAccessToken = this.jwtService.sign(
-        {
-          sub: payload.sub,
-          email: payload.email
-        },
+        { sub: payload.sub, email: payload.email, role: payload.role },
         {
           expiresIn: this.configService.get<string>('JWT_EXPIRES_IN') || '15m',
-        }
+          secret: this.configService.get<string>('JWT_SECRET'),
+        },
       );
       return {
         access_token: newAccessToken
@@ -131,12 +126,21 @@ export class AuthService {
     }
   }
 
-  async logout(userId: string): Promise<boolean> {
-    try{
-      await this.cacheManager.del(`refresh:${userId}`)
+  async logout(userId: string, accessToken: string): Promise<boolean> {
+    try {
+      await this.cacheManager.del(`refresh:${userId}`);
+
+      // Revogar o access token pelo tempo restante de validade
+      const payload = this.jwtService.verify(accessToken, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+      });
+      const ttl = payload.exp - Math.floor(Date.now() / 1000);
+      if (ttl > 0) {
+        await this.revokeToken(accessToken, ttl);
+      }
+
       return true;
-    } catch(error){
-      throw new ExceptionsHandler(error)
+    } catch {
       return false;
     }
   }
