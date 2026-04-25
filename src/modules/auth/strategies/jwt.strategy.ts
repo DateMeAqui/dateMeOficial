@@ -15,27 +15,30 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         private usersService: UsersService,
         private authService: AuthService,
     ){
-        // Detectar se estamos no modo de geração (--generate-only)
-        const isGenerateMode = process.argv.includes('--generate-only') || process.env.MOCK_PRISMA === 'true';
+        const isGenerateMode = process.argv.includes('--generate-only');
         const jwtSecret = isGenerateMode
             ? 'documentation_generation_secret_key'
-            : configService.get<string>('JWT_SECRET') || 'fallback-secret-key';
+            : configService.get<string>('JWT_SECRET');
+
+        if (!isGenerateMode && !jwtSecret) {
+            throw new Error('JWT_SECRET env var is required — refusing to start');
+        }
 
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: jwtSecret,
+            secretOrKey: jwtSecret as string,
             passReqToCallback: true,
         });
     }
 
     async validate(request: any, payload: JwtPayload) {
-        //Se estiver no modo de geração de documentação, retornar um usúario ficticio
-        if(process.argv.includes('--generate-only') || process.env.MOCK_PRISMA === 'true') {
+        if (process.argv.includes('--generate-only')) {
             return {
                 id: 'doc-user-id',
                 email: 'doc@example.com',
                 fullName: 'Documentation User',
+                status: 'ACTIVE',
             };
         }
 

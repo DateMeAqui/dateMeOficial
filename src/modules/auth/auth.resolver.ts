@@ -25,9 +25,11 @@ export class AuthResolver {
   @Mutation(() => Boolean)
   async logoutUser(
     @CurrentUser() currentUser,
-    @Context() context
-  ): Promise<Boolean>{
-    return await this.authService.logout(currentUser.id)
+    @Context() context,
+  ): Promise<Boolean> {
+    const authHeader: string = context.req?.headers?.authorization ?? '';
+    const accessToken = authHeader.replace('Bearer ', '');
+    return await this.authService.logout(currentUser.id, accessToken);
   }
 
   @UseGuards(GqlAuthGuard)

@@ -6,7 +6,11 @@ import { join } from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  const port = process.env.PORT || 3000; 
+  const port = process.env.PORT || 3000;
+
+  if (process.env.NODE_ENV === 'production' && process.env.MOCK_PRISMA === 'true') {
+    throw new Error('MOCK_PRISMA cannot be enabled in production — aborting');
+  } 
 
   app.useStaticAssets(join(__dirname, '..', 'uploads'), { prefix: '/uploads/' });
 
