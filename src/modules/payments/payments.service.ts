@@ -20,12 +20,9 @@ export class PaymentsService {
         id: data.reference_id
       }
     })
-    console.log(JSON.stringify(data, null, 2))
     const paymentMethodFactory = data.qr_codes?.[0]?.expiration_date
     ? 'PIX'
     : data.charges?.[0]?.payment_method?.type;
-    
-    console.log(paymentMethodFactory)
     const dataOrderByTypePayment = await FactoryMehtodPaymnet
       .getFactory(paymentMethodFactory)
       .generate(data);
@@ -37,7 +34,6 @@ export class PaymentsService {
       planId: subscription.planId,
 
     }
-    console.log(dataPayment)
     const newPayment = await this.prisma.payment.create({
       data:dataPayment
     })

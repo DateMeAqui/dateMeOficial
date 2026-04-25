@@ -30,7 +30,6 @@ export class SmsService {
             console.error('Erro ao enviar SMS Telesign:', error);
             return reject(error);
           }
-          console.log('SMS enviado com sucesso:', responseBody);
           resolve(responseBody);
         },
         formattedNumber,    // Segundo parâmetro: número

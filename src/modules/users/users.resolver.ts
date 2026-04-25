@@ -6,6 +6,7 @@ import { UpdateUserInput } from './dto/update-user.input';
 import { UsersWithPagination, UserWithAge } from './dto/user.dto';
 import { PaginationInput } from '../common/pagination.input';
 import { UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { GqlAuthGuard } from '../auth/guards/qgl-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -17,9 +18,8 @@ export class UsersResolver {
   constructor(private readonly usersService: UsersService) {}
 
   @Public()
-  @Mutation(() => User, {
-    description: "Cria um user"
-  })
+  @Throttle({ default: { ttl: 3600000, limit: 3 } })
+  @Mutation(() => User, { description: 'Cria um user' })
   CreateUser(@Args('createUserInput') createUserInput: CreateUserInput){
     return this.usersService.create(createUserInput);
   }

@@ -28,6 +28,10 @@ export class MediaService {
     return this.prisma.media.create({ data: input });
   }
 
+  async findById(mediaId: string) {
+    return this.prisma.media.findUnique({ where: { id: mediaId } });
+  }
+
   async assertOwnership(mediaIds: string[], userId: string): Promise<void> {
     if (mediaIds.length === 0) return;
     const rows = await this.prisma.media.findMany({

@@ -4,6 +4,7 @@ import { AuthModule } from '../auth/auth.module';
 import { MediaModule } from '../media/media.module';
 import { multerConfig } from './config/multer.config';
 import { UploadMediasController } from './upload-medias.controller';
+import { MediaServeController } from './media-serve.controller';
 import { UploadMediasResolver } from './upload-medias.resolver';
 import { UploadMediasService } from './upload-medias.service';
 
@@ -13,7 +14,7 @@ import { UploadMediasService } from './upload-medias.service';
     AuthModule,
     MediaModule,
   ],
-  controllers: [UploadMediasController],
+  controllers: [UploadMediasController, MediaServeController],
   providers: [UploadMediasResolver, UploadMediasService],
   exports: [UploadMediasService],
 })

@@ -19,15 +19,11 @@ export class ComplaintsService {
     let reportedUserId: string;
     let reportedContent: string;
 
-    console.log('Criando denúncia:', complaint, 'Reporter ID:', reporterId);
-
     // Se for denúncia de post
     if (complaint?.postId) {
       const postExists = await this.prisma.post.findUnique({
         where: { id: complaint.postId }
       });
-
-      console.log('Post encontrado:', postExists);
 
       if (!postExists) {
         throw new Error('Post não encontrado');
@@ -48,15 +44,6 @@ export class ComplaintsService {
     } else {
       throw new Error('É necessário informar postId ou commentId');
     }
-
-    console.log({
-      reason: complaint.reason,
-      description: complaint.description,
-      postId: complaint.postId,
-      commentId: complaint.commentId,
-      reporterId: reporterId,
-        status: 'PENDING'
-    });
 
     this.logger.log(`Nova denúncia: ${complaint.reason} (reporter: ${reporterId})`);
 

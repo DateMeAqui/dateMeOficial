@@ -1,6 +1,7 @@
 import { Resolver, Query, Mutation, Args, Int, Context } from '@nestjs/graphql';
 import { AuthService } from './auth.service';
 import { UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { User } from '../users/dto/user.dto';
 import { Public } from './guards/public.decorator';
 import { AuthResponse } from './dto/auth-response.dto';
@@ -13,6 +14,7 @@ export class AuthResolver {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Mutation(() => AuthResponse)
   async login(
     @Args('loginInput') loginInput: LoginInput,
