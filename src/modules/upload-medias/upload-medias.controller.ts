@@ -11,6 +11,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { IsIn } from 'class-validator';
 import { CurrentUserRest } from '../auth/decorators/current-user-rest.decorator';
@@ -48,6 +49,7 @@ const parseSingleFilePipe = () =>
 
 @Controller('upload-medias')
 @UseGuards(JwtRestAuthGuard)
+@Throttle({ default: { ttl: 60000, limit: 20 } })
 export class UploadMediasController {
   constructor(
     private readonly uploadMediasService: UploadMediasService,

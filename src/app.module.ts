@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { GqlThrottlerGuard } from './modules/auth/guards/gql-throttler.guard';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { join } from 'path';
@@ -54,6 +57,7 @@ import { FollowModule } from './modules/follow/follow.module';
     //     };
     //   },
     // }),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     ScheduleModule.forRoot(),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
@@ -101,6 +105,9 @@ import { FollowModule } from './modules/follow/follow.module';
     FollowModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: GqlThrottlerGuard },
+  ],
 })
 export class AppModule {}
