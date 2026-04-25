@@ -17,7 +17,6 @@ export class AddressesService {
           address: true
         }
       });
-      console.log(user)
       const addressId = user.address?.id
 
       const addressUpdate = this.prisma.address.update({

@@ -73,7 +73,6 @@ export class PagSeguroService {
     //salva a chave privada
     await fs.writeFile(path.join(this.keysDir, 'private_key.pem'), privateKey, 'utf8');
 
-    console.log('Chaves geradas com sucesso!')
   }
 
   //endpoint disponibilizado para o ambiente PagSeguro
@@ -104,7 +103,6 @@ export class PagSeguroService {
 
     axios
       .request(options)
-      .then(res => console.log(res.data))
       .catch(err => console.error(err));
 
   }
@@ -123,8 +121,6 @@ export class PagSeguroService {
 
     const formatStringJsonData = JSON.stringify(selectCreate, null, 2)
     
-    console.log(formatStringJsonData)
-
     const response = await this.pagSeguroAPI.requestPagSeguro({
       typeMethod: 'POST',
       url: '/orders',
@@ -173,9 +169,6 @@ export class PagSeguroService {
       .update(this.configService.get<string>('PAGBANK_WEBHOOK_SECRET')+"-"+payload)
       .digest('hex');
     
-    console.log(expectedSignature)
-    console.log(signature)
-    console.log(`sha256=${expectedSignature}` === signature)
 
   }
 }
